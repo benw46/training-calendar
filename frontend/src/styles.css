@@ -39,6 +39,49 @@ body {
   letter-spacing: -0.01em;
 }
 
+.app-header__controls {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+/* ── Year navigator: < 2026 > ─────────────────────────────── */
+
+.year-nav {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+}
+
+.year-nav__btn {
+  background: none;
+  border: none;
+  color: rgba(255,255,255,0.75);
+  font-size: 18px;
+  line-height: 1;
+  padding: 2px 6px;
+  cursor: pointer;
+  border-radius: 3px;
+  transition: color 0.12s, background 0.12s;
+}
+
+.year-nav__btn:hover {
+  color: #fff;
+  background: rgba(255,255,255,0.12);
+}
+
+.year-nav__label {
+  font-size: 13px;
+  font-weight: 700;
+  color: #fff;
+  letter-spacing: 0.02em;
+  min-width: 38px;
+  text-align: center;
+  user-select: none;
+}
+
+/* ── Today button ─────────────────────────────────────────── */
+
 .app-header__today-btn {
   font-size: 12px;
   font-weight: 600;

@@ -3,18 +3,16 @@ import WeekRow from './WeekRow'
 import { getMondayOf, addWeeks, addDays, toYMD } from '../utils/dates'
 import { api } from '../api/workouts'
 
-const DAY_NAMES = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
-const BATCH = 4
-
-// 6 weeks above + current + 3 below = 10 initial weeks.
-// After scrollIntoView(center), the top sentinel sits ~330-400 px above the
-// viewport on a typical laptop — safely outside ROOT_MARGIN so the observer
-// doesn't fire a spurious upward load on mount.
+const DAY_NAMES    = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
+const BATCH        = 4
 const WEEKS_BEFORE = 6
 const WEEKS_AFTER  = 3
 const ROOT_MARGIN  = '150px'
 
-export default function Calendar({ onDayClick, onCardClick, onMenuClick, reloadRef, scrollToTodayRef }) {
+export default function Calendar({
+  onDayClick, onCardClick, onMenuClick,
+  reloadRef, scrollToTodayRef, jumpToDateRef, onYearChange,
+}) {
   const today = new Date()
   today.setHours(0, 0, 0, 0)
   const currentMonday    = getMondayOf(today)
@@ -35,6 +33,8 @@ export default function Calendar({ onDayClick, onCardClick, onMenuClick, reloadR
   const prevScrollHeightRef = useRef(null)
   const loadingRef         = useRef(false)
   const todayRef           = useRef(null)
+  const weekDivRefs        = useRef(new Map())   // YMD → DOM element
+  const pendingScrollYMD   = useRef(null)        // target week after a year jump
 
   useEffect(() => { weeksRef.current = weeks }, [weeks])
 
@@ -42,8 +42,7 @@ export default function Calendar({ onDayClick, onCardClick, onMenuClick, reloadR
   useEffect(() => {
     const ws = weeksRef.current
     api.list(toYMD(ws[0]), toYMD(addDays(ws[ws.length - 1], 6)))
-      .then(listToByDate)
-      .then(setWorkoutsByDate)
+      .then(listToByDate).then(setWorkoutsByDate)
   }, [])
 
   // ── Scroll to today on mount ─────────────────────────────────
@@ -53,9 +52,25 @@ export default function Calendar({ onDayClick, onCardClick, onMenuClick, reloadR
     })
   }, [])
 
+  // ── Track visible year via scroll ────────────────────────────
+  useEffect(() => {
+    const el = scrollRef.current
+    if (!el || weeks.length === 0) return
+
+    function update() {
+      const avgH = el.scrollHeight / weeks.length
+      const idx  = Math.max(0, Math.min(Math.floor(el.scrollTop / avgH), weeks.length - 1))
+      onYearChange?.(weeks[idx].getFullYear())
+    }
+
+    update()
+    el.addEventListener('scroll', update, { passive: true })
+    return () => el.removeEventListener('scroll', update)
+  }, [weeks, onYearChange])
+
   // ── Reload after mutations ───────────────────────────────────
   const reload = useCallback(async () => {
-    const ws    = weeksRef.current
+    const ws = weeksRef.current
     const byDate = await api
       .list(toYMD(ws[0]), toYMD(addDays(ws[ws.length - 1], 6)))
       .then(listToByDate)
@@ -64,24 +79,57 @@ export default function Calendar({ onDayClick, onCardClick, onMenuClick, reloadR
 
   useEffect(() => { if (reloadRef) reloadRef.current = reload }, [reloadRef, reload])
 
-  // ── Jump-to-today ────────────────────────────────────────────
+  // ── Jump to today ────────────────────────────────────────────
   useEffect(() => {
     if (scrollToTodayRef)
       scrollToTodayRef.current = () =>
         todayRef.current?.scrollIntoView({ block: 'center', behavior: 'smooth' })
   }, [scrollToTodayRef])
 
-  // ── Scroll-position restoration after prepend ────────────────
-  // Must run synchronously before paint so there's no visible jump.
+  // ── Jump to an arbitrary date (year nav) ─────────────────────
+  const jumpToDate = useCallback(async (targetDate) => {
+    const targetMonday = getMondayOf(targetDate)
+    const targetYMD    = toYMD(targetMonday)
+
+    const newWeeks = Array.from(
+      { length: WEEKS_BEFORE + 1 + WEEKS_AFTER },
+      (_, i) => addWeeks(targetMonday, i - WEEKS_BEFORE)
+    )
+
+    const byDate = await api
+      .list(toYMD(newWeeks[0]), toYMD(addDays(newWeeks[newWeeks.length - 1], 6)))
+      .then(listToByDate)
+
+    prevScrollHeightRef.current = null  // cancel any pending prepend restoration
+    pendingScrollYMD.current    = targetYMD
+    setWorkoutsByDate(byDate)
+    setWeeks(newWeeks)
+  }, [])
+
+  useEffect(() => {
+    if (jumpToDateRef) jumpToDateRef.current = jumpToDate
+  }, [jumpToDateRef, jumpToDate])
+
+  // ── Layout effects after weeks change ────────────────────────
   useLayoutEffect(() => {
+    // 1. Restore scroll position after infinite-scroll prepend
     if (prevScrollHeightRef.current !== null && scrollRef.current) {
       scrollRef.current.scrollTop +=
         scrollRef.current.scrollHeight - prevScrollHeightRef.current
       prevScrollHeightRef.current = null
     }
+
+    // 2. Scroll to target week after a year jump
+    if (pendingScrollYMD.current) {
+      const el = weekDivRefs.current.get(pendingScrollYMD.current)
+      if (el) {
+        el.scrollIntoView({ block: 'start' })
+        pendingScrollYMD.current = null
+      }
+    }
   }, [weeks])
 
-  // ── Load more weeks ──────────────────────────────────────────
+  // ── Load more weeks (infinite scroll) ───────────────────────
   const loadMore = useCallback(async (direction) => {
     if (loadingRef.current) return
     loadingRef.current = true
@@ -95,13 +143,9 @@ export default function Calendar({ onDayClick, onCardClick, onMenuClick, reloadR
         .list(toYMD(newWeeks[0]), toYMD(addDays(newWeeks[newWeeks.length - 1], 6)))
         .then(listToByDate)
 
-      if (direction === 'up') {
-        // Snapshot height before React updates the DOM so useLayoutEffect can
-        // compute the exact delta to add to scrollTop.
+      if (direction === 'up')
         prevScrollHeightRef.current = scrollRef.current.scrollHeight
-      }
 
-      // React 18 batches both state updates into one commit.
       setWorkoutsByDate(prev => ({ ...prev, ...byDate }))
       setWeeks(prev =>
         direction === 'up' ? [...newWeeks, ...prev] : [...prev, ...newWeeks]
@@ -112,8 +156,6 @@ export default function Calendar({ onDayClick, onCardClick, onMenuClick, reloadR
   }, [])
 
   // ── IntersectionObserver ─────────────────────────────────────
-  // Recreated whenever `weeks` changes so the observer always watches the
-  // current sentinel elements and correct root.
   useEffect(() => {
     const scrollEl = scrollRef.current
     if (!scrollEl) return
@@ -131,7 +173,6 @@ export default function Calendar({ onDayClick, onCardClick, onMenuClick, reloadR
 
     if (topSentinelRef.current)    observer.observe(topSentinelRef.current)
     if (bottomSentinelRef.current) observer.observe(bottomSentinelRef.current)
-
     return () => observer.disconnect()
   }, [weeks, loadMore])
 
@@ -150,7 +191,14 @@ export default function Calendar({ onDayClick, onCardClick, onMenuClick, reloadR
         {weeks.map((monday) => {
           const key = toYMD(monday)
           return (
-            <div key={key} ref={key === currentMondayYMD ? todayRef : null}>
+            <div
+              key={key}
+              ref={el => {
+                if (el) weekDivRefs.current.set(key, el)
+                else    weekDivRefs.current.delete(key)
+                if (key === currentMondayYMD) todayRef.current = el
+              }}
+            >
               <WeekRow
                 monday={monday}
                 today={today}
