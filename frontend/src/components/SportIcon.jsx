@@ -19,21 +19,45 @@ function SwimIcon() {
 
 function BikeIcon() {
   return (
-    <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
-      <circle cx="3.5" cy="11.5" r="2.5" stroke="currentColor" strokeWidth="1.5"/>
-      <circle cx="12.5" cy="11.5" r="2.5" stroke="currentColor" strokeWidth="1.5"/>
-      <path d="M3.5 11.5 L8 5.5 L12.5 11.5 M8 5.5 L10 3.5 L12 3.5"
-            stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+    <svg width="16" height="16" viewBox="0 0 16 16" fill="none" strokeLinecap="round">
+      {/* Wheels */}
+      <circle cx="3.5" cy="12" r="2.4" stroke="currentColor" strokeWidth="1.3"/>
+      <circle cx="12.5" cy="12" r="2.4" stroke="currentColor" strokeWidth="1.3"/>
+      {/* Main frame */}
+      <line x1="7.5" y1="12"  x2="6"    y2="8"   stroke="currentColor" strokeWidth="1.2"/>
+      <line x1="6"   y1="8"   x2="11"   y2="7.5" stroke="currentColor" strokeWidth="1.2"/>
+      <line x1="7.5" y1="12"  x2="11.5" y2="9"   stroke="currentColor" strokeWidth="1.2"/>
+      <line x1="11"  y1="7.5" x2="11.5" y2="9"   stroke="currentColor" strokeWidth="1.7"/>
+      {/* Rear triangle */}
+      <line x1="7.5" y1="12" x2="3.5" y2="12" stroke="currentColor" strokeWidth="1.2"/>
+      <line x1="6"   y1="8"  x2="3.5" y2="12" stroke="currentColor" strokeWidth="1.2"/>
+      {/* Fork */}
+      <line x1="11.5" y1="9" x2="12.5" y2="12" stroke="currentColor" strokeWidth="1.2"/>
+      {/* Seat post + saddle */}
+      <line x1="6"   y1="8"   x2="6"   y2="7"   stroke="currentColor" strokeWidth="1.1"/>
+      <line x1="4.5" y1="7"   x2="7.5" y2="7"   stroke="currentColor" strokeWidth="1.5"/>
+      {/* Stem + handlebar */}
+      <line x1="11"  y1="7.5" x2="10.5" y2="5.8" stroke="currentColor" strokeWidth="1.1"/>
+      <line x1="9.5" y1="5.8" x2="12"   y2="5.8" stroke="currentColor" strokeWidth="1.5"/>
     </svg>
   )
 }
 
 function RunIcon() {
   return (
-    <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
-      <circle cx="10" cy="2.5" r="1.5" fill="currentColor"/>
-      <path d="M9 4.5 L7 8 L4 10.5 M9 4.5 L11.5 7.5 L14 8.5 M7 8 L8 12 L6 15 M9 9 L10 13 L12 15"
-            stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+    <svg width="16" height="16" viewBox="0 0 16 16" fill="none" strokeLinecap="round" strokeLinejoin="round">
+      {/* Head */}
+      <circle cx="10.5" cy="2.5" r="1.5" fill="currentColor"/>
+      {/* Torso (forward lean) */}
+      <line x1="10" y1="4" x2="8.5" y2="8" stroke="currentColor" strokeWidth="1.4"/>
+      {/* Forward arm: shoulder → elbow → hand raised */}
+      <path d="M10 5 L12 5.5 L13 3.5" stroke="currentColor" strokeWidth="1.2"/>
+      {/* Back arm: shoulder → elbow → hand back */}
+      <path d="M9.5 5.5 L7.5 7 L7 6" stroke="currentColor" strokeWidth="1.2"/>
+      {/* Front leg: hip → knee forward → foot strike */}
+      <path d="M8.5 8 L10.5 10.5 L9 13.5" stroke="currentColor" strokeWidth="1.4"/>
+      {/* Back leg: hip → knee → foot pushing off */}
+      <path d="M8.5 8 L6 10 L4 12.5" stroke="currentColor" strokeWidth="1.4"/>
     </svg>
   )
 }
