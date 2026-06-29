@@ -7,7 +7,7 @@ const DAY_NAMES = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
 const BATCH = 4       // weeks to add per load
 const ROOT_MARGIN = '300px'
 
-export default function Calendar({ onDayClick, onCardClick, onMenuClick, reloadRef }) {
+export default function Calendar({ onDayClick, onCardClick, onMenuClick, reloadRef, scrollToTodayRef }) {
   const today = new Date()
   today.setHours(0, 0, 0, 0)
   const currentMonday = getMondayOf(today)
@@ -61,6 +61,14 @@ export default function Calendar({ onDayClick, onCardClick, onMenuClick, reloadR
   useEffect(() => {
     if (reloadRef) reloadRef.current = reload
   }, [reloadRef, reload])
+
+  // ── Jump-to-today ────────────────────────────────────────────
+  useEffect(() => {
+    if (scrollToTodayRef) {
+      scrollToTodayRef.current = () =>
+        todayRef.current?.scrollIntoView({ block: 'center', behavior: 'smooth' })
+    }
+  }, [scrollToTodayRef])
 
   // ── Scroll restoration after prepend (must be synchronous) ───
   useLayoutEffect(() => {

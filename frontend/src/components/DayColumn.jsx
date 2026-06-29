@@ -26,6 +26,9 @@ export default function DayColumn({ date, today, workouts = [], onDayClick, onCa
             onMenuClick={onMenuClick}
           />
         ))}
+        {workouts.length === 0 && (
+          <div className="day-body__add-hint" aria-hidden="true">+</div>
+        )}
       </div>
     </div>
   )
