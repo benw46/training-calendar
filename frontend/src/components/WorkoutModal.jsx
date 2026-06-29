@@ -223,17 +223,6 @@ export default function WorkoutModal({ workout, initialDate, onClose, onSaved, o
             </div>
           </div>
 
-          <div className="form-row form-row--checkbox">
-            <label className="form-checkbox-label">
-              <input
-                type="checkbox"
-                checked={form.completed}
-                onChange={e => set('completed', e.target.checked)}
-              />
-              Mark as done
-            </label>
-          </div>
-
           <div className="modal-actions">
             {isEdit && (
               <button
