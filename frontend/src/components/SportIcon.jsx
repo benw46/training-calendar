@@ -47,17 +47,17 @@ function RunIcon() {
   return (
     <svg width="16" height="16" viewBox="0 0 16 16" fill="none" strokeLinecap="round" strokeLinejoin="round">
       {/* Head */}
-      <circle cx="10.5" cy="2.5" r="1.5" fill="currentColor"/>
+      <circle cx="11" cy="2.5" r="1.5" fill="currentColor"/>
       {/* Torso (forward lean) */}
-      <line x1="10" y1="4" x2="8.5" y2="8" stroke="currentColor" strokeWidth="1.4"/>
-      {/* Forward arm: shoulder → elbow → hand raised */}
-      <path d="M10 5 L12 5.5 L13 3.5" stroke="currentColor" strokeWidth="1.2"/>
-      {/* Back arm: shoulder → elbow → hand back */}
-      <path d="M9.5 5.5 L7.5 7 L7 6" stroke="currentColor" strokeWidth="1.2"/>
-      {/* Front leg: hip → knee forward → foot strike */}
-      <path d="M8.5 8 L10.5 10.5 L9 13.5" stroke="currentColor" strokeWidth="1.4"/>
-      {/* Back leg: hip → knee → foot pushing off */}
-      <path d="M8.5 8 L6 10 L4 12.5" stroke="currentColor" strokeWidth="1.4"/>
+      <line x1="10.5" y1="4" x2="9" y2="9" stroke="currentColor" strokeWidth="1.4"/>
+      {/* Forward arm: elbow forward, forearm bends up toward chin */}
+      <path d="M10 5.5 L12.5 6 L12 4" stroke="currentColor" strokeWidth="1.2"/>
+      {/* Back arm: elbow back, forearm bends downward */}
+      <path d="M10 5.5 L7.5 6.5 L7 8.5" stroke="currentColor" strokeWidth="1.2"/>
+      {/* Front leg: knee swings forward, foot hangs below knee */}
+      <path d="M9 9 L11 11.5 L10 14" stroke="currentColor" strokeWidth="1.4"/>
+      {/* Back leg: pushing off behind */}
+      <path d="M9 9 L6 11 L4 13.5" stroke="currentColor" strokeWidth="1.4"/>
     </svg>
   )
 }
