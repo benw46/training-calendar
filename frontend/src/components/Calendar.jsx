@@ -80,11 +80,18 @@ export default function Calendar({
   useEffect(() => { if (reloadRef) reloadRef.current = reload }, [reloadRef, reload])
 
   // ── Jump to today ────────────────────────────────────────────
+  // todayRef.current is null when today's week has been scrolled out of the
+  // rendered set (e.g. after a year jump). Fall back to jumpToDate in that case.
   useEffect(() => {
     if (scrollToTodayRef)
-      scrollToTodayRef.current = () =>
-        todayRef.current?.scrollIntoView({ block: 'center', behavior: 'smooth' })
-  }, [scrollToTodayRef])
+      scrollToTodayRef.current = () => {
+        if (todayRef.current) {
+          todayRef.current.scrollIntoView({ block: 'center', behavior: 'smooth' })
+        } else {
+          jumpToDate(today)
+        }
+      }
+  }, [scrollToTodayRef, jumpToDate])
 
   // ── Jump to an arbitrary date (year nav) ─────────────────────
   const jumpToDate = useCallback(async (targetDate) => {
