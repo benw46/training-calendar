@@ -126,6 +126,86 @@ body {
   background: #f5f7fa;
 }
 
+/* ── Workout card ─────────────────────────────────────────── */
+
+.workout-card {
+  background: #fff;
+  border: 1px solid #e2e5ea;
+  border-radius: 4px;
+  overflow: hidden;
+  cursor: pointer;
+  transition: box-shadow 0.1s;
+}
+
+.workout-card:hover {
+  box-shadow: 0 1px 6px rgba(0,0,0,0.12);
+}
+
+.workout-card__bar {
+  height: 6px;
+  width: 100%;
+}
+
+.workout-card__content {
+  padding: 5px 6px 6px;
+}
+
+.workout-card__top {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  margin-bottom: 3px;
+}
+
+.sport-icon {
+  display: flex;
+  align-items: center;
+  flex-shrink: 0;
+}
+
+.workout-card__name {
+  flex: 1;
+  font-size: 12px;
+  font-weight: 600;
+  color: #1f2937;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  line-height: 1.2;
+}
+
+.workout-card__menu {
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: #9ca3af;
+  font-size: 14px;
+  line-height: 1;
+  padding: 0 2px;
+  flex-shrink: 0;
+}
+
+.workout-card__menu:hover {
+  color: #374151;
+}
+
+.workout-card__actual {
+  display: flex;
+  gap: 8px;
+  font-size: 12px;
+  font-weight: 600;
+  color: #111827;
+  line-height: 1.3;
+}
+
+.workout-card__planned {
+  display: flex;
+  gap: 8px;
+  font-size: 11px;
+  color: #9ca3af;
+  line-height: 1.3;
+}
+
 /* ── Summary panel ────────────────────────────────────────── */
 
 .summary-panel {
