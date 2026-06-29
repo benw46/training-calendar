@@ -1,22 +1,32 @@
-import { useRef } from 'react'
+import { useRef, useState } from 'react'
 import Calendar from './components/Calendar'
+import WorkoutModal from './components/WorkoutModal'
 
 export default function App() {
   const reloadRef = useRef(null)
+  const [modal, setModal] = useState(null)
+  // modal: null | { type: 'add', date: Date } | { type: 'edit', workout: object }
 
   function handleDayClick(date) {
-    // Opens add-workout modal — wired up in Stage 6
-    console.log('day clicked', date)
+    setModal({ type: 'add', date })
   }
 
   function handleCardClick(workout) {
-    // Opens edit-workout modal — wired up in Stage 6
-    console.log('card clicked', workout)
+    setModal({ type: 'edit', workout })
   }
 
-  function handleMenuClick(workout, e) {
-    // Opens edit/delete menu — wired up in Stage 6
-    console.log('menu clicked', workout)
+  function handleMenuClick(workout) {
+    setModal({ type: 'edit', workout })
+  }
+
+  function handleSaved() {
+    setModal(null)
+    reloadRef.current?.()
+  }
+
+  function handleDeleted() {
+    setModal(null)
+    reloadRef.current?.()
   }
 
   return (
@@ -27,6 +37,16 @@ export default function App() {
         onCardClick={handleCardClick}
         onMenuClick={handleMenuClick}
       />
+
+      {modal && (
+        <WorkoutModal
+          workout={modal.type === 'edit' ? modal.workout : null}
+          initialDate={modal.type === 'add' ? modal.date : null}
+          onClose={() => setModal(null)}
+          onSaved={handleSaved}
+          onDeleted={handleDeleted}
+        />
+      )}
     </div>
   )
 }
