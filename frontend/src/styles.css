@@ -59,6 +59,18 @@ body {
   flex: 1;
 }
 
+.calendar-loading,
+.calendar-error {
+  padding: 16px;
+  text-align: center;
+  font-size: 13px;
+  color: #6b7280;
+}
+
+.calendar-error {
+  color: #ef4444;
+}
+
 /* ── Week row ─────────────────────────────────────────────── */
 
 .week-row {
