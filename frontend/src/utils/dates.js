@@ -41,3 +41,12 @@ export function formatDayHeader(date, today) {
   if (num === 1) return { primary: String(num), secondary: MONTH_SHORT[date.getMonth()] }
   return { primary: String(num), secondary: null }
 }
+
+export function formatSyncedAt(isoString) {
+  if (!isoString) return null
+  const d = new Date(isoString)
+  const month = MONTH_SHORT[d.getMonth()]
+  const hh = String(d.getHours()).padStart(2, '0')
+  const mm = String(d.getMinutes()).padStart(2, '0')
+  return `${month} ${d.getDate()}, ${hh}:${mm}`
+}

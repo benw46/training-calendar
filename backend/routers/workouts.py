@@ -1,3 +1,5 @@
+from datetime import date as date_cls
+
 from fastapi import APIRouter, HTTPException
 from database import get_conn
 from models import WorkoutCreate, WorkoutUpdate, WorkoutOut
@@ -15,14 +17,25 @@ def list_workouts(start: str, end: str):
     return [WorkoutOut.from_row(r) for r in rows]
 
 
+@router.get("/next-events", response_model=list[WorkoutOut])
+def get_next_events(limit: int = 3):
+    today = date_cls.today().isoformat()
+    with get_conn() as conn:
+        rows = conn.execute(
+            "SELECT * FROM workouts WHERE sport = 'event' AND date >= ? ORDER BY date, id LIMIT ?",
+            (today, limit),
+        ).fetchall()
+    return [WorkoutOut.from_row(r) for r in rows]
+
+
 @router.post("/", response_model=WorkoutOut, status_code=201)
 def create_workout(body: WorkoutCreate):
     with get_conn() as conn:
         cur = conn.execute(
             """INSERT INTO workouts
                (date, sport, name, planned_duration_minutes, planned_distance_km,
-                actual_duration_minutes, actual_distance_km, completed)
-               VALUES (?, ?, ?, ?, ?, ?, ?, ?)""",
+                actual_duration_minutes, actual_distance_km, completed, description)
+               VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)""",
             (
                 body.date,
                 body.sport.value,
@@ -32,6 +45,7 @@ def create_workout(body: WorkoutCreate):
                 body.actual_duration_minutes,
                 body.actual_distance_km,
                 int(body.completed),
+                body.description,
             ),
         )
         conn.commit()

@@ -1,7 +1,12 @@
+from dotenv import load_dotenv
+load_dotenv()
+
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from database import init_db
 from routers.workouts import router as workouts_router
+from routers.garmin import router as garmin_router
+from routers.race_bests import router as race_bests_router
 
 app = FastAPI(title="Triathlon Calendar API")
 
@@ -19,6 +24,8 @@ def startup():
 
 
 app.include_router(workouts_router)
+app.include_router(garmin_router)
+app.include_router(race_bests_router)
 
 
 @app.get("/health")

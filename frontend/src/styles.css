@@ -6,7 +6,7 @@
 
 body {
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-  font-size: 13px;
+  font-size: 14px;
   background: #eaecf0;
   color: #1f2937;
   height: 100vh;
@@ -28,15 +28,78 @@ body {
   justify-content: space-between;
   padding: 0 16px;
   height: 42px;
-  background: #1c3461;
+  /* Fallback only — App.jsx sets the real gradient inline, centered on the
+     event banner's measured position. */
+  background: linear-gradient(90deg, #334155 0%, #1e3a8a 50%, #334155 100%);
   flex-shrink: 0;
 }
 
 .app-header__title {
-  font-size: 14px;
+  display: flex;
+  flex-direction: column;
+  font-size: 15px;
   font-weight: 700;
   color: #fff;
   letter-spacing: -0.01em;
+  line-height: 1.3;
+}
+
+.app-header__subtitle {
+  font-size: 11px;
+  font-weight: 400;
+  color: rgba(255, 255, 255, 0.7);
+}
+
+.app-header__brand {
+  display: inline-block;
+  color: #fff;
+}
+
+.app-header__event-banner-wrap {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.app-header__event-banner {
+  display: block;
+  position: relative;
+  height: 16px;
+  overflow: hidden;
+  font-size: 14px;
+  font-weight: 600;
+  color: #fff;
+  white-space: nowrap;
+}
+
+.app-header__event-banner-strip {
+  display: flex;
+  flex-direction: column;
+  transition: transform 0.6s ease;
+}
+
+.app-header__event-banner-dots {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  flex-shrink: 0;
+}
+
+.app-header__event-banner-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.4);
+  transition: background 0.3s ease;
+}
+
+.app-header__event-banner-dot--active {
+  background: #fff;
+}
+
+.app-header__event-banner-line {
+  height: 16px;
+  line-height: 16px;
 }
 
 .app-header__controls {
@@ -45,37 +108,36 @@ body {
   gap: 12px;
 }
 
-/* ── Year navigator: < 2026 > ─────────────────────────────── */
+/* ── Month navigator: < June 2026 > ──────────────────────── */
 
-.year-nav {
+.month-nav {
   display: flex;
   align-items: center;
-  gap: 2px;
+  gap: 8px;
 }
 
-.year-nav__btn {
-  background: none;
-  border: none;
-  color: rgba(255,255,255,0.75);
-  font-size: 18px;
-  line-height: 1;
-  padding: 2px 6px;
-  cursor: pointer;
-  border-radius: 3px;
-  transition: color 0.12s, background 0.12s;
-}
-
-.year-nav__btn:hover {
-  color: #fff;
-  background: rgba(255,255,255,0.12);
-}
-
-.year-nav__label {
+.month-nav__btn {
   font-size: 13px;
+  font-weight: 600;
+  color: rgba(255,255,255,0.9);
+  background: rgba(255,255,255,0.12);
+  border: 1px solid rgba(255,255,255,0.25);
+  border-radius: 4px;
+  padding: 4px 10px;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.month-nav__btn:hover {
+  background: rgba(255,255,255,0.2);
+}
+
+.month-nav__label {
+  font-size: 14px;
   font-weight: 700;
   color: #fff;
   letter-spacing: 0.02em;
-  min-width: 38px;
+  width: 120px;
   text-align: center;
   user-select: none;
 }
@@ -83,7 +145,7 @@ body {
 /* ── Today button ─────────────────────────────────────────── */
 
 .app-header__today-btn {
-  font-size: 12px;
+  font-size: 13px;
   font-weight: 600;
   color: rgba(255,255,255,0.9);
   background: rgba(255,255,255,0.12);
@@ -98,6 +160,63 @@ body {
   background: rgba(255,255,255,0.2);
 }
 
+.app-header__sync-btn {
+  font-size: 13px;
+  font-weight: 600;
+  color: rgba(255,255,255,0.9);
+  background: rgba(255,255,255,0.12);
+  border: 1px solid rgba(255,255,255,0.25);
+  border-radius: 4px;
+  padding: 4px 12px;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.app-header__sync-btn:hover:not(:disabled) {
+  background: rgba(255,255,255,0.2);
+}
+
+.app-header__sync-btn:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+.app-header__graphs-btn {
+  font-size: 13px;
+  font-weight: 600;
+  color: rgba(255,255,255,0.9);
+  background: rgba(255,255,255,0.12);
+  border: 1px solid rgba(255,255,255,0.25);
+  border-radius: 4px;
+  padding: 4px 12px;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.app-header__graphs-btn:hover {
+  background: rgba(255,255,255,0.2);
+}
+
+.app-header__last-synced {
+  font-size: 12px;
+  color: rgba(255, 255, 255, 0.55);
+  white-space: nowrap;
+}
+
+.sync-toast {
+  position: fixed;
+  bottom: 20px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: #1c3461;
+  color: #fff;
+  padding: 8px 20px;
+  border-radius: 6px;
+  font-size: 14px;
+  z-index: 1000;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.25);
+}
+
 /* ── Calendar shell ───────────────────────────────────────── */
 
 .calendar {
@@ -107,22 +226,51 @@ body {
   overflow: hidden;
 }
 
+.calendar-scroll {
+  flex: 1;
+  overflow: auto;
+  /* Without this, momentum/rubber-band scrolling (trackpads especially)
+     can overscroll past this container's own boundary and hand off to an
+     ancestor scroller, fighting with the JS-driven scrollTop corrections
+     the infinite-scroll logic applies mid-gesture. */
+  overscroll-behavior: contain;
+  /* Chrome's built-in scroll anchoring auto-adjusts scrollTop whenever
+     content is inserted above the viewport — exactly what the infinite
+     scroll's own prevScrollHeightRef compensation already does by hand.
+     With both active, prepending a batch of weeks gets compensated for
+     TWICE (once natively, once by our code), producing a large visible
+     jump. This is our container to manage manually, so opt it out. */
+  overflow-anchor: none;
+}
+
+.calendar-error {
+  flex-shrink: 0;
+  padding: 8px 16px;
+  text-align: center;
+  font-size: 13px;
+  color: #b91c1c;
+  background: #fef2f2;
+  border-bottom: 1px solid #fecaca;
+}
+
 /* Sticky day-name strip */
 .calendar-day-names {
   display: grid;
-  grid-template-columns: repeat(7, 1fr) 190px;
+  grid-template-columns: repeat(7, minmax(130px, 1fr)) 215px;
   background: #fff;
   border-bottom: 1px solid #dde0e6;
-  flex-shrink: 0;
+  position: sticky;
+  top: 0;
+  z-index: 2;
 }
 
 .day-name {
   padding: 5px 8px;
-  font-size: 10px;
+  font-size: 16px;
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.07em;
-  color: #9ca3af;
+  color: #374151;
   border-right: 1px solid #eaecf0;
 }
 
@@ -130,30 +278,19 @@ body {
   border-right: none;
 }
 
-/* Scrollable body */
-.calendar-body {
-  overflow-y: auto;
-  flex: 1;
-}
+/* Week-row wrapper — scrolling is handled by .calendar-scroll */
+.calendar-body {}
 
 .scroll-sentinel {
   height: 1px;
   pointer-events: none;
 }
 
-.calendar-error {
-  padding: 16px;
-  text-align: center;
-  font-size: 13px;
-  color: #ef4444;
-}
-
 /* ── Week row ─────────────────────────────────────────────── */
 
 .week-row {
   display: grid;
-  grid-template-columns: repeat(7, 1fr) 190px;
-  border-bottom: 2px solid #c8ccd4;
+  grid-template-columns: repeat(7, minmax(130px, 1fr)) 215px;
   background: #dde0e6;  /* shows as 1px gap between columns */
   gap: 1px;
 }
@@ -164,7 +301,10 @@ body {
   display: flex;
   flex-direction: column;
   background: #fff;
-  min-height: 120px;
+  min-height: 250px;
+  min-width: 0;
+  overflow: hidden;
+  border-bottom: 2px solid #c8ccd4;
 }
 
 .day-header {
@@ -182,7 +322,7 @@ body {
 }
 
 .day-header__primary {
-  font-size: 12px;
+  font-size: 13px;
   font-weight: 700;
   color: #374151;
   line-height: 1.4;
@@ -194,10 +334,23 @@ body {
 }
 
 .day-header__secondary {
-  font-size: 10px;
+  font-size: 15px;
   font-weight: 600;
   color: #b0b7c3;
   line-height: 1.4;
+}
+
+.day-header__race-day {
+  font-size: 11px;
+  font-weight: 700;
+  color: #1c3461;
+  letter-spacing: 0.02em;
+  line-height: 1.4;
+  margin-left: auto;
+}
+
+.day-header--today .day-header__race-day {
+  color: #fbbf24;
 }
 
 .day-body {
@@ -214,6 +367,11 @@ body {
   background: #f5f7fa;
 }
 
+.day-body--drag-over {
+  background: #eef2ff;
+  box-shadow: inset 0 0 0 2px #1c3461;
+}
+
 /* Subtle "+" that appears when the column is empty and hovered */
 .day-body__add-hint {
   position: absolute;
@@ -221,7 +379,7 @@ body {
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 22px;
+  font-size: 23px;
   font-weight: 300;
   color: #d1d5db;
   pointer-events: none;
@@ -247,9 +405,22 @@ body {
   z-index: 1;          /* keeps cards above the add-hint */
 }
 
+.workout-card--done      { background: #dcfce7; }
+.workout-card--partial   { background: #fef9c3; }
+.workout-card--missed    { background: #ffe4e6; }
+.workout-card--unplanned { background: #f9fafb; }
+
 .workout-card:hover {
   box-shadow: 0 2px 8px rgba(0,0,0,0.10);
   border-color: #cdd0d8;
+}
+
+.workout-card--dragging {
+  opacity: 0.5;
+}
+
+.workout-card--drag-over {
+  border-top: 2px solid #1c3461;
 }
 
 .workout-card__bar {
@@ -277,12 +448,12 @@ body {
 
 .workout-card__name {
   flex: 1;
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 700;
   color: #111827;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
+  white-space: normal;
+  overflow-wrap: break-word;
+  min-width: 0;
   line-height: 1.3;
 }
 
@@ -291,7 +462,7 @@ body {
   border: none;
   cursor: pointer;
   color: #c4c9d4;
-  font-size: 15px;
+  font-size: 16px;
   line-height: 1;
   padding: 0 1px;
   flex-shrink: 0;
@@ -308,6 +479,7 @@ body {
 
 .workout-card__actual {
   display: flex;
+  flex-wrap: wrap;
   gap: 7px;
   font-size: 11px;
   font-weight: 600;
@@ -318,12 +490,29 @@ body {
 
 .workout-card__planned {
   display: flex;
+  flex-wrap: wrap;
   gap: 7px;
-  font-size: 10px;
+  font-size: 11px;
   font-weight: 500;
   color: #adb5c4;
   line-height: 1.35;
   font-variant-numeric: tabular-nums;
+}
+
+.workout-card__description {
+  font-size: 11px;
+  color: #6b7280;
+  line-height: 1.4;
+  margin-top: 1px;
+  overflow-wrap: break-word;
+  white-space: pre-wrap;
+}
+
+.workout-card__countdown {
+  font-size: 11px;
+  font-weight: 700;
+  color: #b45309;
+  line-height: 1.4;
 }
 
 /* ── Summary panel ────────────────────────────────────────── */
@@ -332,10 +521,19 @@ body {
   background: #fff;
   padding: 10px 14px;
   border-left: 1px solid #dde0e6;
+  border-bottom: 2px solid #c8ccd4;
   display: flex;
   flex-direction: column;
   gap: 4px;
   justify-content: center;
+  min-width: 0;
+  overflow: visible;
+}
+
+.summary-row-group {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
 }
 
 .summary-row {
@@ -353,13 +551,17 @@ body {
 .summary-row--total .summary-row__label {
   font-weight: 700;
   color: #111827;
-  font-size: 12px;
+  font-size: 13px;
 }
 
 .summary-row--total .summary-row__value {
   font-weight: 700;
   color: #111827;
-  font-size: 12px;
+  font-size: 13px;
+}
+
+.summary-row--total .summary-row__planned-value {
+  font-size: 13px;
 }
 
 .summary-row__dot {
@@ -371,15 +573,156 @@ body {
 
 .summary-row__label {
   flex: 1;
-  font-size: 11px;
+  font-size: 12px;
   color: #6b7280;
 }
 
 .summary-row__value {
-  font-size: 11px;
-  font-weight: 600;
-  color: #374151;
+  display: inline-block;
+  min-width: 34px;
+  text-align: right;
+  font-size: 12px;
+  font-weight: 700;
+  color: #111827;
   font-variant-numeric: tabular-nums;
+}
+
+.summary-row__planned-value {
+  display: inline-block;
+  min-width: 34px;
+  text-align: right;
+  font-size: 12px;
+  font-weight: 400;
+  color: #9ca3af;
+  font-variant-numeric: tabular-nums;
+}
+
+.summary-row__progress {
+  height: 3px;
+  border-radius: 2px;
+  background: #eef0f3;
+  overflow: hidden;
+}
+
+.summary-row__progress-fill {
+  height: 100%;
+  border-radius: 2px;
+  transition: width 0.2s ease;
+}
+
+.summary-delta-badge {
+  font-size: 11px;
+  font-weight: 700;
+  padding: 1px 5px;
+  border-radius: 8px;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+
+.summary-delta-badge--up {
+  color: #15803d;
+  background: #dcfce7;
+}
+
+.summary-delta-badge--down-mild {
+  color: #92400e;
+  background: #fef3c7;
+}
+
+.summary-delta-badge--down-severe {
+  color: #b91c1c;
+  background: #fee2e2;
+}
+
+.summary-delta-badge--new,
+.summary-delta-badge--flat {
+  color: #6b7280;
+  background: #f3f4f6;
+}
+
+.summary-delta-bar {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+  margin-bottom: 10px;
+}
+
+.summary-delta-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.summary-delta-bar__label {
+  font-size: 11px;
+  color: #9ca3af;
+}
+
+.summary-delta {
+  position: relative;
+  display: inline-flex;
+  outline: none;
+}
+
+.summary-delta-popover {
+  display: none;
+  position: absolute;
+  top: 100%;
+  right: 0;
+  margin-top: 6px;
+  width: 190px;
+  background: #fff;
+  border: 1px solid #dde0e6;
+  border-radius: 8px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.15);
+  padding: 8px 10px;
+  z-index: 1000;
+}
+
+.summary-delta:hover .summary-delta-popover,
+.summary-delta:focus-within .summary-delta-popover,
+.summary-delta:focus .summary-delta-popover {
+  display: block;
+}
+
+.summary-delta-popover__explanation {
+  font-size: 11px;
+  font-style: italic;
+  color: #6b7280;
+  line-height: 1.35;
+  margin-bottom: 8px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid #eaecf0;
+}
+
+.summary-delta-popover__title {
+  font-size: 11px;
+  font-weight: 700;
+  color: #9ca3af;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  margin-bottom: 6px;
+}
+
+.summary-delta-popover__row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 3px 0;
+}
+
+.summary-delta-popover__dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.summary-delta-popover__label {
+  flex: 1;
+  font-size: 12px;
+  color: #374151;
 }
 
 /* ── Modal ────────────────────────────────────────────────── */
@@ -404,6 +747,161 @@ body {
   box-shadow: 0 12px 40px rgba(0,0,0,0.18);
 }
 
+.modal--wide {
+  width: 1600px;
+}
+
+.graph-body {
+  padding: 16px 20px 20px;
+}
+
+.graph-body--triple {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 20px;
+}
+
+.graph-panel {
+  min-width: 0;
+}
+
+.graph-panel--table-stack {
+  grid-column: 1;
+  grid-row: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  overflow: hidden;
+}
+
+.graph-panel--table-block {
+  min-height: 0;
+}
+
+.graph-panel--chart-3mo {
+  grid-column: 2;
+  grid-row: 1;
+}
+
+.graph-panel--chart-year {
+  grid-column: 1 / span 2;
+  grid-row: 2;
+}
+
+.graph-panel-title {
+  font-size: 12px;
+  font-weight: 700;
+  color: #374151;
+  text-align: center;
+  margin-bottom: 8px;
+}
+
+.graph-loading {
+  padding: 40px 0;
+  text-align: center;
+  color: #6b7280;
+  font-size: 13px;
+}
+
+.weekly-chart {
+  width: 100%;
+  height: auto;
+  display: block;
+  margin: 0 auto;
+}
+
+.graph-panel--chart-3mo .weekly-chart {
+  max-width: 460px;
+}
+
+.pr-table {
+  width: 100%;
+  table-layout: fixed;
+  border-collapse: collapse;
+  font-size: 12px;
+}
+
+/* Both Personal Bests tables share this class, and both have the same 4
+   columns in the same order (name/longest, result, date, time-since) —
+   fixed per-column widths here keep them pixel-aligned regardless of how
+   wide each table's own content happens to be. */
+.pr-table th:nth-child(1), .pr-table td:nth-child(1) { width: 32%; }
+.pr-table th:nth-child(2), .pr-table td:nth-child(2) { width: 26%; }
+.pr-table th:nth-child(3), .pr-table td:nth-child(3) { width: 24%; }
+.pr-table th:nth-child(4), .pr-table td:nth-child(4) { width: 18%; }
+
+.pr-table th {
+  text-align: left;
+  padding: 6px 8px;
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  color: #6b7280;
+  border-bottom: 1px solid #e2e5ea;
+}
+
+.pr-table td {
+  padding: 8px;
+  border-bottom: 1px solid #eaecf0;
+  color: #111827;
+}
+
+.race-best-input {
+  width: 90px;
+  max-width: 100%;
+  font-size: 12px;
+  font-family: inherit;
+  color: #111827;
+  border: 1px solid #dde0e6;
+  border-radius: 4px;
+  padding: 4px 6px;
+}
+
+.race-best-input:focus {
+  outline: none;
+  border-color: #2563eb;
+}
+
+.race-best-input--name {
+  width: 195px;
+}
+
+.race-best-date-cell {
+  position: relative;
+}
+
+.race-best-date-display {
+  display: block;
+  width: 100%;
+  text-align: left;
+  font-size: 12px;
+  font-family: inherit;
+  color: #111827;
+  background: none;
+  border: 1px solid transparent;
+  border-radius: 4px;
+  padding: 4px 6px;
+  cursor: pointer;
+}
+
+.race-best-date-display:hover,
+.race-best-date-display:focus {
+  outline: none;
+  border-color: #dde0e6;
+}
+
+/* The real <input type="date"> stays in the DOM (so its native picker can
+   still be opened programmatically) but is visually replaced by the
+   consistently-formatted button above it. */
+.race-best-date-input {
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  pointer-events: none;
+  width: 100%;
+}
+
 .modal-header {
   display: flex;
   align-items: center;
@@ -413,7 +911,7 @@ body {
 }
 
 .modal-title {
-  font-size: 15px;
+  font-size: 16px;
   font-weight: 700;
   color: #111827;
 }
@@ -422,7 +920,7 @@ body {
   background: none;
   border: none;
   cursor: pointer;
-  font-size: 13px;
+  font-size: 14px;
   color: #9ca3af;
   padding: 3px 5px;
   border-radius: 4px;
@@ -443,7 +941,7 @@ body {
 }
 
 .form-section-label {
-  font-size: 10px;
+  font-size: 11px;
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.08em;
@@ -471,11 +969,16 @@ body {
 }
 
 .form-label {
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 700;
   color: #374151;
   text-transform: uppercase;
   letter-spacing: 0.04em;
+}
+
+.form-textarea {
+  resize: vertical;
+  min-height: 70px;
 }
 
 .form-input,
@@ -483,7 +986,7 @@ body {
   padding: 7px 10px;
   border: 1px solid #d1d5db;
   border-radius: 6px;
-  font-size: 13px;
+  font-size: 14px;
   color: #111827;
   background: #fff;
   width: 100%;
@@ -507,28 +1010,139 @@ body {
 }
 
 .form-error {
-  font-size: 11px;
+  font-size: 12px;
   color: #ef4444;
 }
 
-.form-row--checkbox { margin-top: 0; }
-
-.form-checkbox-label {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  font-size: 13px;
-  color: #374151;
-  cursor: pointer;
-  user-select: none;
+.form-date-field {
+  position: relative;
 }
 
-.form-checkbox-label input[type="checkbox"] {
-  width: 15px;
-  height: 15px;
+.form-date-display {
+  display: block;
+  width: 100%;
+  text-align: left;
   cursor: pointer;
-  accent-color: #1c3461;
+}
+
+/* The real <input type="date"> stays in the DOM (so its native picker can
+   still be opened programmatically) but is visually replaced by the
+   consistently-formatted button above it. */
+.form-date-input-hidden {
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  pointer-events: none;
+  width: 100%;
+}
+
+/* ── Color legend ─────────────────────────────────────────── */
+
+.color-legend {
+  position: relative;
+  display: flex;
+  align-items: center;
+  outline: none;
+}
+
+.color-legend__icon {
+  font-size: 15px;
+  color: rgba(255, 255, 255, 0.75);
+  cursor: default;
+}
+
+.color-legend__popover {
+  display: none;
+  position: absolute;
+  top: 100%;
+  right: 0;
+  margin-top: 8px;
+  width: 300px;
+  background: #fff;
+  border: 1px solid #dde0e6;
+  border-radius: 8px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.15);
+  padding: 10px 12px;
+  z-index: 1000;
+}
+
+.color-legend:hover .color-legend__popover,
+.color-legend:focus-within .color-legend__popover,
+.color-legend:focus .color-legend__popover {
+  display: block;
+}
+
+.color-legend__row {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  padding: 3px 0;
+}
+
+.color-legend__dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
   flex-shrink: 0;
+}
+
+.color-legend__dot--outline {
+  border: 1px solid #d1d5db;
+}
+
+.color-legend__label {
+  font-size: 12px;
+  font-weight: 700;
+  color: #374151;
+  width: 62px;
+  flex-shrink: 0;
+}
+
+.color-legend__text {
+  font-size: 12px;
+  color: #6b7280;
+  line-height: 1.4;
+}
+
+.color-legend__section-title {
+  font-size: 12px;
+  font-weight: 700;
+  color: #374151;
+  margin-bottom: 4px;
+}
+
+.color-legend__list {
+  font-size: 12px;
+  color: #6b7280;
+  line-height: 1.4;
+  padding-left: 16px;
+  list-style-type: disc;
+}
+
+.color-legend__list li + li {
+  margin-top: 2px;
+}
+
+.color-legend__divider {
+  height: 1px;
+  background: #eaecf0;
+  margin: 8px 0;
+}
+
+.color-legend__credit {
+  font-size: 11px;
+  color: #9ca3af;
+  line-height: 1.4;
+}
+
+.modal-submit-error {
+  font-size: 13px;
+  color: #b91c1c;
+  background: #fef2f2;
+  border: 1px solid #fecaca;
+  border-radius: 6px;
+  padding: 8px 10px;
+  margin-top: 10px;
 }
 
 /* ── Modal actions ────────────────────────────────────────── */
@@ -552,7 +1166,7 @@ body {
 .btn {
   padding: 7px 16px;
   border-radius: 6px;
-  font-size: 13px;
+  font-size: 14px;
   font-weight: 600;
   cursor: pointer;
   border: none;

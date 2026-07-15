@@ -1,49 +1,83 @@
 import SportIcon from './SportIcon'
-import { getCardStatus, fmtDuration, fmtDistance } from '../utils/workouts'
+import { getCardStatus, fmtDuration, fmtDistance, STATUS_BAR_COLOR } from '../utils/workouts'
 
-const STATUS_COLOR = {
-  done:    '#22c55e',
-  partial: '#f59e0b',
-  missed:  '#ef4444',
-  future:  'transparent',
-}
-
-export default function WorkoutCard({ workout, today, onClick, onMenuClick }) {
+export default function WorkoutCard({
+  workout, today, onClick, onMenuClick,
+  isDragging, isDragOver, onDragStart, onDragOver, onDrop, onDragEnd,
+}) {
   const status = getCardStatus(workout, today)
-  const barColor = STATUS_COLOR[status]
+  const barColor = STATUS_BAR_COLOR[status]
 
   const actualDur = fmtDuration(workout.actual_duration_minutes)
   const actualDist = fmtDistance(workout.actual_distance_km)
   const plannedDur = fmtDuration(workout.planned_duration_minutes)
   const plannedDist = fmtDistance(workout.planned_distance_km)
 
+  const isEvent = workout.sport === 'event'
+  const daysUntil = isEvent
+    ? Math.round((new Date(workout.date + 'T00:00:00') - today) / 86400000)
+    : null
+  const countdownLabel = daysUntil == null
+    ? null
+    : daysUntil > 0
+      ? `${daysUntil} days until…`
+      : daysUntil === 0
+        ? 'Today'
+        : `${Math.abs(daysUntil)} days ago`
+
   function handleMenu(e) {
     e.stopPropagation()
     onMenuClick?.(workout, e)
   }
 
+  const className = [
+    'workout-card',
+    `workout-card--${status}`,
+    isEvent && 'workout-card--event',
+    isDragging && 'workout-card--dragging',
+    isDragOver && 'workout-card--drag-over',
+  ].filter(Boolean).join(' ')
+
   return (
-    <div className="workout-card" onClick={() => onClick?.(workout)}>
+    <div
+      className={className}
+      draggable
+      onClick={() => onClick?.(workout)}
+      onDragStart={onDragStart}
+      onDragOver={onDragOver}
+      onDrop={onDrop}
+      onDragEnd={onDragEnd}
+    >
       <div className="workout-card__bar" style={{ background: barColor }} />
       <div className="workout-card__content">
+        {isEvent && (
+          <p className="workout-card__countdown">{countdownLabel}</p>
+        )}
         <div className="workout-card__top">
           <SportIcon sport={workout.sport} />
           <span className="workout-card__name">{workout.name}</span>
           <button className="workout-card__menu" onClick={handleMenu} aria-label="Options">⋮</button>
         </div>
 
-        {(actualDur || actualDist) && (
-          <div className="workout-card__actual">
-            {actualDur && <span>{actualDur}</span>}
-            {actualDist && <span>{actualDist}</span>}
-          </div>
+        {workout.description && (
+          <p className="workout-card__description">{workout.description}</p>
         )}
 
-        {(plannedDur || plannedDist) && (
-          <div className="workout-card__planned">
-            {plannedDur && <span>P: {plannedDur}</span>}
-            {plannedDist && <span>P: {plannedDist}</span>}
-          </div>
+        {workout.sport !== 'note' && workout.sport !== 'event' && (
+          <>
+            {(actualDur || actualDist) && (
+              <div className="workout-card__actual">
+                {actualDur && <span>A: {actualDur}</span>}
+                {actualDist && <span>{actualDist}</span>}
+              </div>
+            )}
+            {(plannedDur || plannedDist) && (
+              <div className="workout-card__planned">
+                {plannedDur && <span>P: {plannedDur}</span>}
+                {plannedDist && <span>P: {plannedDist}</span>}
+              </div>
+            )}
+          </>
         )}
       </div>
     </div>

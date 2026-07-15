@@ -1,10 +1,4 @@
-const COLORS = {
-  swim:     '#0ea5e9',
-  bike:     '#8b5cf6',
-  run:      '#22c55e',
-  strength: '#f97316',
-  other:    '#6b7280',
-}
+import { SPORT_COLORS } from '../utils/workouts'
 
 function SwimIcon() {
   return (
@@ -45,19 +39,19 @@ function BikeIcon() {
 
 function RunIcon() {
   return (
-    <svg width="16" height="16" viewBox="0 0 16 16" fill="none" strokeLinecap="round" strokeLinejoin="round">
+    <svg width="16" height="16" viewBox="0 0 100 100" fill="none" strokeLinecap="round" strokeLinejoin="round">
       {/* Head */}
-      <circle cx="11" cy="2.5" r="1.5" fill="currentColor"/>
-      {/* Torso (forward lean) */}
-      <line x1="10.5" y1="4" x2="9" y2="9" stroke="currentColor" strokeWidth="1.4"/>
-      {/* Forward arm: elbow forward, forearm bends up toward chin */}
-      <path d="M10 5.5 L12.5 6 L12 4" stroke="currentColor" strokeWidth="1.2"/>
-      {/* Back arm: elbow back, forearm bends downward */}
-      <path d="M10 5.5 L7.5 6.5 L7 8.5" stroke="currentColor" strokeWidth="1.2"/>
-      {/* Front leg: knee swings forward, foot hangs below knee */}
-      <path d="M9 9 L11 11.5 L10 14" stroke="currentColor" strokeWidth="1.4"/>
-      {/* Back leg: pushing off behind */}
-      <path d="M9 9 L6 11 L4 13.5" stroke="currentColor" strokeWidth="1.4"/>
+      <circle cx="58" cy="8" r="8" fill="currentColor"/>
+      {/* Torso — separate from arms, slight forward lean */}
+      <line x1="56" y1="19" x2="50" y2="52" stroke="currentColor" strokeWidth="8"/>
+      {/* Forward arm — from shoulder, elbow drives forward, forearm angles back up */}
+      <path d="M56 22 L70 32 L78 20" stroke="currentColor" strokeWidth="7"/>
+      {/* Back arm — from shoulder, elbow swings back, forearm drops */}
+      <path d="M56 22 L42 32 L34 44" stroke="currentColor" strokeWidth="7"/>
+      {/* Leading leg — knee and foot drive forward */}
+      <path d="M50 52 L64 68 L72 84" stroke="currentColor" strokeWidth="8"/>
+      {/* Trailing leg — thigh swings back, heel kicks up behind */}
+      <path d="M50 52 L36 70 L28 58" stroke="currentColor" strokeWidth="8"/>
     </svg>
   )
 }
@@ -65,9 +59,16 @@ function RunIcon() {
 function StrengthIcon() {
   return (
     <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
-      <rect x="0.5" y="5.5" width="3" height="5" rx="1" fill="currentColor"/>
-      <rect x="12.5" y="5.5" width="3" height="5" rx="1" fill="currentColor"/>
-      <rect x="3.5" y="7" width="9" height="2" rx="0.5" fill="currentColor"/>
+      {/* Bar */}
+      <rect x="4.2" y="7.3" width="7.6" height="1.4" fill="currentColor"/>
+      {/* Left plates: small collar, medium, large (outside to inside) */}
+      <rect x="0.4" y="6.3" width="0.9" height="3.4" rx="0.3" fill="currentColor"/>
+      <rect x="1.3" y="4.6" width="1.2" height="6.8" rx="0.4" fill="currentColor"/>
+      <rect x="2.5" y="3"   width="1.7" height="10"  rx="0.5" fill="currentColor"/>
+      {/* Right plates: mirrored */}
+      <rect x="11.8" y="3"   width="1.7" height="10"  rx="0.5" fill="currentColor"/>
+      <rect x="13.5" y="4.6" width="1.2" height="6.8" rx="0.4" fill="currentColor"/>
+      <rect x="14.7" y="6.3" width="0.9" height="3.4" rx="0.3" fill="currentColor"/>
     </svg>
   )
 }
@@ -75,17 +76,42 @@ function StrengthIcon() {
 function OtherIcon() {
   return (
     <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
-      <path d="M9 1.5 L4 8.5 H7.5 L7 14.5 L12 7.5 H8.5 Z" fill="currentColor"/>
+      <circle cx="8" cy="8" r="6.5" stroke="currentColor" strokeWidth="1.5"/>
+      <circle cx="5" cy="8" r="1.1" fill="currentColor"/>
+      <circle cx="8" cy="8" r="1.1" fill="currentColor"/>
+      <circle cx="11" cy="8" r="1.1" fill="currentColor"/>
     </svg>
   )
 }
 
-const ICONS = { swim: SwimIcon, bike: BikeIcon, run: RunIcon, strength: StrengthIcon, other: OtherIcon }
+function NoteIcon() {
+  return (
+    <svg width="16" height="16" viewBox="0 0 16 16" fill="none" strokeLinecap="round">
+      <path d="M3 2 L10.5 2 L13 4.5 L13 14 L3 14 Z" stroke="currentColor" strokeWidth="1.4" strokeLinejoin="round"/>
+      <path d="M10.5 2 L10.5 4.5 L13 4.5" stroke="currentColor" strokeWidth="1.2" strokeLinejoin="round"/>
+      <line x1="5" y1="7" x2="11" y2="7" stroke="currentColor" strokeWidth="1.2"/>
+      <line x1="5" y1="9.5" x2="11" y2="9.5" stroke="currentColor" strokeWidth="1.2"/>
+      <line x1="5" y1="12" x2="9" y2="12" stroke="currentColor" strokeWidth="1.2"/>
+    </svg>
+  )
+}
+
+function EventIcon() {
+  return (
+    <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+      <rect x="1"  y="8"  width="4" height="6" rx="0.5" fill="currentColor"/>
+      <rect x="6"  y="5"  width="4" height="9" rx="0.5" fill="currentColor"/>
+      <rect x="11" y="10" width="4" height="4" rx="0.5" fill="currentColor"/>
+    </svg>
+  )
+}
+
+const ICONS = { swim: SwimIcon, bike: BikeIcon, run: RunIcon, strength: StrengthIcon, other: OtherIcon, note: NoteIcon, event: EventIcon }
 
 export default function SportIcon({ sport }) {
   const Icon = ICONS[sport] ?? OtherIcon
   return (
-    <span className="sport-icon" style={{ color: COLORS[sport] ?? COLORS.other }}>
+    <span className="sport-icon" style={{ color: SPORT_COLORS[sport] ?? SPORT_COLORS.other }}>
       <Icon />
     </span>
   )
