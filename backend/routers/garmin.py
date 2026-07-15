@@ -2,12 +2,13 @@ import logging
 import os
 from datetime import date, datetime, timedelta, timezone
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, Depends, HTTPException
 from garminconnect import Garmin
 
+from auth import require_auth
 from database import get_conn
 
-router = APIRouter(prefix="/garmin", tags=["garmin"])
+router = APIRouter(prefix="/garmin", tags=["garmin"], dependencies=[Depends(require_auth)])
 logger = logging.getLogger(__name__)
 
 COMMIT_BATCH_SIZE = 20
@@ -114,7 +115,7 @@ def sync_garmin():
                         """INSERT INTO workouts
                            (date, sport, name, actual_duration_minutes, actual_distance_km,
                             completed, garmin_activity_id)
-                           VALUES (?, ?, ?, ?, ?, 1, ?)""",
+                           VALUES (?, ?, ?, ?, ?, TRUE, ?)""",
                         (activity_date, sport, activity_name, duration_minutes, distance_km, garmin_id),
                     )
                     unmatched += 1
@@ -130,7 +131,7 @@ def sync_garmin():
                     conn.execute(
                         """UPDATE workouts SET
                            actual_duration_minutes = ?, actual_distance_km = ?,
-                           garmin_activity_id = ?, completed = 1
+                           garmin_activity_id = ?, completed = TRUE
                            WHERE id = ?""",
                         (duration_minutes, distance_km, garmin_id, match["id"]),
                     )
@@ -163,7 +164,10 @@ def sync_garmin():
 
         last_synced_at = datetime.now(timezone.utc).isoformat()
         conn.execute(
-            "INSERT OR REPLACE INTO sync_status (id, last_synced_at, data_watermark) VALUES (1, ?, ?)",
+            """INSERT INTO sync_status (id, last_synced_at, data_watermark) VALUES (1, ?, ?)
+               ON CONFLICT (id) DO UPDATE SET
+                 last_synced_at = EXCLUDED.last_synced_at,
+                 data_watermark = EXCLUDED.data_watermark""",
             (last_synced_at, data_watermark),
         )
         conn.commit()

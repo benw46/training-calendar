@@ -1,7 +1,13 @@
-const BASE = 'http://localhost:8000'
+import { supabase } from '../supabaseClient'
+
+const BASE = import.meta.env.VITE_API_BASE || 'http://localhost:8000'
 
 async function request(path, opts = {}) {
-  const res = await fetch(`${BASE}${path}`, opts)
+  const { data: { session } } = await supabase.auth.getSession()
+  const headers = { ...opts.headers }
+  if (session?.access_token) headers.Authorization = `Bearer ${session.access_token}`
+
+  const res = await fetch(`${BASE}${path}`, { ...opts, headers })
   if (res.status === 204) return null
   if (!res.ok) {
     let detail = null

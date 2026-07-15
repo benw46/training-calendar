@@ -197,6 +197,23 @@ body {
   background: rgba(255,255,255,0.2);
 }
 
+.app-header__signout-btn {
+  font-size: 12px;
+  font-weight: 600;
+  color: rgba(255,255,255,0.65);
+  background: transparent;
+  border: 1px solid rgba(255,255,255,0.2);
+  border-radius: 4px;
+  padding: 4px 10px;
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s;
+}
+
+.app-header__signout-btn:hover {
+  background: rgba(255,255,255,0.12);
+  color: rgba(255,255,255,0.9);
+}
+
 .app-header__last-synced {
   font-size: 12px;
   color: rgba(255, 255, 255, 0.55);
@@ -1198,4 +1215,44 @@ body {
 .btn--danger:hover:not(:disabled) {
   background: #fef2f2;
   border-color: #dc2626;
+}
+
+/* ── Login screen ─────────────────────────────────────────── */
+
+.login-screen {
+  height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(100deg, #334155, #1e3a8a);
+}
+
+.login-card {
+  width: 340px;
+  background: #fff;
+  border-radius: 10px;
+  box-shadow: 0 12px 40px rgba(0,0,0,0.18);
+  padding: 32px 28px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.login-title {
+  font-size: 20px;
+  font-weight: 700;
+  color: #111827;
+  text-align: center;
+}
+
+.login-subtitle {
+  font-size: 13px;
+  color: #6b7280;
+  text-align: center;
+  margin-bottom: 6px;
+}
+
+.login-submit {
+  width: 100%;
+  margin-top: 6px;
 }

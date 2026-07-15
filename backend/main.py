@@ -1,3 +1,5 @@
+import os
+
 from dotenv import load_dotenv
 load_dotenv()
 
@@ -10,9 +12,16 @@ from routers.race_bests import router as race_bests_router
 
 app = FastAPI(title="Triathlon Calendar API")
 
+# FRONTEND_URL lets the deployed frontend's real origin be added without a
+# code change — set it in the host's env vars once that URL is known. Local
+# dev's localhost origin is always allowed alongside it.
+allow_origins = ["http://localhost:5173"]
+if os.getenv("FRONTEND_URL"):
+    allow_origins.append(os.getenv("FRONTEND_URL"))
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:5173"],
+    allow_origins=allow_origins,
     allow_methods=["*"],
     allow_headers=["*"],
 )

@@ -3,13 +3,26 @@ import Calendar from './components/Calendar'
 import ColorLegend from './components/ColorLegend'
 import EventBanner from './components/EventBanner'
 import GraphsModal from './components/GraphsModal'
+import Login from './components/Login'
 import WorkoutModal from './components/WorkoutModal'
 import { api } from './api/workouts'
 import { formatSyncedAt } from './utils/dates'
+import { supabase } from './supabaseClient'
 
 const MONTH_NAMES = ['January','February','March','April','May','June','July','August','September','October','November','December']
 
 export default function App() {
+  // undefined = still checking for an existing session; null = signed out
+  const [session, setSession] = useState(undefined)
+
+  useEffect(() => {
+    supabase.auth.getSession().then(({ data }) => setSession(data.session))
+    const { data: listener } = supabase.auth.onAuthStateChange((_event, newSession) => {
+      setSession(newSession)
+    })
+    return () => listener.subscription.unsubscribe()
+  }, [])
+
   const reloadRef        = useRef(null)
   const scrollToTodayRef = useRef(null)
   const jumpToDateRef    = useRef(null)
@@ -77,15 +90,24 @@ export default function App() {
 
   // A sync may have happened in a previous session, so read the persisted
   // timestamp on mount rather than only tracking it after a sync in this one.
+  // Gated on `session` (and re-run when it changes) since this component's
+  // hooks all run before the login gate below — on first mount `session` is
+  // still `undefined` (auth hasn't resolved yet), so an unguarded one-shot
+  // effect here would 401 against the backend and never retry once actually
+  // signed in.
   useEffect(() => {
+    if (!session) return
     api.getLastSync().then(r => setLastSynced(r.last_synced_at)).catch(() => {})
-  }, [])
+  }, [session])
 
   const refreshNextEvents = useCallback(() => {
     api.getNextEvents(3).then(setNextEvents).catch(() => {})
   }, [])
 
-  useEffect(() => { refreshNextEvents() }, [refreshNextEvents])
+  useEffect(() => {
+    if (!session) return
+    refreshNextEvents()
+  }, [session, refreshNextEvents])
 
   async function handleGarminSync() {
     setSyncing(true)
@@ -124,6 +146,11 @@ export default function App() {
     setVisibleMonth(d)
     jumpToDateRef.current?.(d)
   }
+
+  // Hooks above this point must always run regardless of auth state, so the
+  // login gate happens here rather than as an early return at the top.
+  if (session === undefined) return null
+  if (session === null) return <Login />
 
   return (
     <div className="app">
@@ -179,6 +206,13 @@ export default function App() {
           </span>
 
           <ColorLegend />
+
+          <button
+            className="app-header__signout-btn"
+            onClick={() => supabase.auth.signOut()}
+          >
+            Sign out
+          </button>
         </div>
       </header>
 

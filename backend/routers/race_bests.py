@@ -1,15 +1,16 @@
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, Depends, HTTPException
+from auth import require_auth
 from database import get_conn
 from models import RaceBestUpdate, RaceBestOut, RaceType
 
-router = APIRouter(prefix="/race-bests", tags=["race-bests"])
+router = APIRouter(prefix="/race-bests", tags=["race-bests"], dependencies=[Depends(require_auth)])
 
 
 @router.get("/", response_model=list[RaceBestOut])
 def list_race_bests():
     with get_conn() as conn:
         rows = conn.execute(
-            "SELECT race_type, race_name, result, date FROM race_bests ORDER BY rowid"
+            "SELECT race_type, race_name, result, date FROM race_bests"
         ).fetchall()
     return [
         RaceBestOut(race_type=row["race_type"], race_name=row["race_name"], result=row["result"], date=row["date"])

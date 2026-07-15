@@ -1,10 +1,11 @@
 from datetime import date as date_cls
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, Depends, HTTPException
+from auth import require_auth
 from database import get_conn
 from models import WorkoutCreate, WorkoutUpdate, WorkoutOut
 
-router = APIRouter(prefix="/workouts", tags=["workouts"])
+router = APIRouter(prefix="/workouts", tags=["workouts"], dependencies=[Depends(require_auth)])
 
 
 @router.get("/", response_model=list[WorkoutOut])
@@ -35,7 +36,8 @@ def create_workout(body: WorkoutCreate):
             """INSERT INTO workouts
                (date, sport, name, planned_duration_minutes, planned_distance_km,
                 actual_duration_minutes, actual_distance_km, completed, description)
-               VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+               VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+               RETURNING id""",
             (
                 body.date,
                 body.sport.value,
@@ -44,13 +46,14 @@ def create_workout(body: WorkoutCreate):
                 body.planned_distance_km,
                 body.actual_duration_minutes,
                 body.actual_distance_km,
-                int(body.completed),
+                body.completed,
                 body.description,
             ),
         )
+        new_id = cur.fetchone()["id"]
         conn.commit()
         row = conn.execute(
-            "SELECT * FROM workouts WHERE id = ?", (cur.lastrowid,)
+            "SELECT * FROM workouts WHERE id = ?", (new_id,)
         ).fetchone()
     return WorkoutOut.from_row(row)
 
@@ -63,8 +66,6 @@ def update_workout(workout_id: int, body: WorkoutUpdate):
 
     if "sport" in updates:
         updates["sport"] = updates["sport"].value
-    if "completed" in updates:
-        updates["completed"] = int(updates["completed"])
 
     fields = ", ".join(f"{k} = ?" for k in updates)
     values = list(updates.values()) + [workout_id]
