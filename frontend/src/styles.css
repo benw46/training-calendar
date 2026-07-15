@@ -37,8 +37,22 @@ body {
 .app-header__title,
 .app-header__event-banner-wrap,
 .app-header__controls,
+.app-header__end,
 .color-legend {
   flex-shrink: 0;
+}
+
+.app-header__end {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  row-gap: 8px;
+}
+
+.app-header__end > * {
+  flex-shrink: 0;
+  white-space: nowrap;
 }
 
 .app-header__controls {
@@ -110,12 +124,26 @@ body {
     row-gap: 8px;
   }
 
-  /* Right-aligned to match ColorLegend's old spot near the header's right
-     edge — but it now wraps to the left edge at this width, which would
-     push a right-aligned popover mostly off-screen. */
+  .app-header__end {
+    flex: 1 1 100%;
+  }
+
+  /* Drop the "Last synced: " label, keeping just the timestamp — the
+     widest single piece of text in this row, and the difference between
+     Sync/Last-synced/Legend/Sign-out fitting on one line or not. */
+  .app-header__last-synced-label {
+    display: none;
+  }
+
+  /* Desktop right-aligns this to match the icon's spot near the header's
+     right edge, but at this width the icon can land almost anywhere
+     horizontally depending on how the rest of .app-header__end wraps —
+     centering under the icon (instead of assuming which side has room)
+     is the only positioning that reliably stays on-screen either way. */
   .color-legend__popover {
-    left: 0;
+    left: 50%;
     right: auto;
+    transform: translateX(-50%);
   }
 }
 

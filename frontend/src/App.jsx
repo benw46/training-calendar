@@ -216,7 +216,15 @@ export default function App() {
           >
             Today
           </button>
+        </div>
 
+        {/* Deliberately outside .app-header__controls: that container is
+            horizontally scrollable, and ColorLegend's popover would get
+            clipped by that container's overflow if it lived inside it.
+            Grouped together here so Sync/Last-synced/Legend/Sign-out always
+            stay on the same line as each other, wrapping as one unit rather
+            than being scattered wherever the nav controls happen to wrap. */}
+        <div className="app-header__end">
           <button
             className="app-header__sync-btn"
             onClick={handleGarminSync}
@@ -226,8 +234,15 @@ export default function App() {
           </button>
 
           <span className="app-header__last-synced">
-            {lastSynced ? `Last synced: ${formatSyncedAt(lastSynced)}` : 'Not yet synced'}
+            {lastSynced ? (
+              <>
+                <span className="app-header__last-synced-label">Last synced: </span>
+                {formatSyncedAt(lastSynced)}
+              </>
+            ) : 'Not yet synced'}
           </span>
+
+          <ColorLegend />
 
           <button
             className="app-header__signout-btn"
@@ -236,12 +251,6 @@ export default function App() {
             Sign out
           </button>
         </div>
-
-        {/* Deliberately outside .app-header__controls: that container is
-            horizontally scrollable/wrapping so the many buttons fit on
-            narrow screens, and its popover would get clipped by that
-            container's overflow if it lived inside it. */}
-        <ColorLegend />
       </header>
 
       {syncMsg && <div className="sync-toast">{syncMsg}</div>}
