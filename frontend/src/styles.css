@@ -32,6 +32,21 @@ body {
      event banner's measured position. */
   background: linear-gradient(90deg, #334155 0%, #1e3a8a 50%, #334155 100%);
   flex-shrink: 0;
+  /* Once there's no more room, scroll horizontally rather than wrapping
+     button text or squeezing controls down to an unreadable width. */
+  overflow-x: auto;
+  overflow-y: hidden;
+}
+
+.app-header__title,
+.app-header__event-banner-wrap,
+.app-header__controls {
+  flex-shrink: 0;
+}
+
+.app-header__controls > * {
+  flex-shrink: 0;
+  white-space: nowrap;
 }
 
 .app-header__title {
@@ -53,6 +68,15 @@ body {
 .app-header__brand {
   display: inline-block;
   color: #fff;
+}
+
+/* Below this width the title is the least essential thing in the header —
+   drop it first so the event banner and controls (month nav, sync, etc.)
+   keep their room rather than wrapping/overflowing. */
+@media (max-width: 1300px) {
+  .app-header__title {
+    display: none;
+  }
 }
 
 .app-header__event-banner-wrap {

@@ -19,7 +19,7 @@ export default function Login() {
   return (
     <div className="login-screen">
       <form className="login-card" onSubmit={handleSubmit}>
-        <h1 className="login-title">Race Condition</h1>
+        <h1 className="login-title">RaceCondition</h1>
         <p className="login-subtitle">Sign in to continue</p>
 
         <div className="form-row">

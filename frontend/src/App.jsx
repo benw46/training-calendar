@@ -162,8 +162,8 @@ export default function App() {
         }}
       >
         <span className="app-header__title">
-          <span className="app-header__brand">Race Condition</span>
-          <span className="app-header__subtitle">The Vibe Coded Workout Scheduler</span>
+          <span className="app-header__brand">RaceCondition</span>
+          <span className="app-header__subtitle">The Vibe-Coded Triathlon Calendar</span>
         </span>
 
         <EventBanner lines={eventBannerLines} wrapRef={bannerWrapRef} />

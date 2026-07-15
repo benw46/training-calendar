@@ -1,6 +1,7 @@
 import logging
 import os
 from datetime import date, datetime, timedelta, timezone
+from pathlib import Path
 
 from fastapi import APIRouter, Depends, HTTPException
 from garminconnect import Garmin
@@ -15,6 +16,26 @@ COMMIT_BATCH_SIZE = 20
 DEFAULT_LOOKBACK_DAYS = 90
 MAX_LOOKBACK_DAYS = 365
 SYNC_OVERLAP_DAYS = 14
+
+# Garmin's SSO login endpoint (sso.garmin.com/mobile/api/login) rate-limits
+# repeated logins fairly aggressively. Session tokens are cached to disk so
+# a sync only hits that endpoint when there's no cached session yet or the
+# cached one has actually expired — every other sync reuses it instead of
+# logging in from scratch.
+TOKEN_DIR = Path(__file__).parent.parent / ".garmin_tokens"
+
+
+def _get_garmin_client(email, password):
+    client = Garmin(email, password)
+    try:
+        client.login(tokenstore=str(TOKEN_DIR))
+    except Exception:
+        client.login()
+        try:
+            client.garth.dump(str(TOKEN_DIR))
+        except Exception:
+            logger.exception("Failed to cache Garmin session tokens")
+    return client
 
 SPORT_MAP = {
     "running": "run",
@@ -51,8 +72,7 @@ def sync_garmin():
         )
 
     try:
-        client = Garmin(email, password)
-        client.login()
+        client = _get_garmin_client(email, password)
     except Exception as exc:
         raise HTTPException(status_code=502, detail=f"Garmin login failed: {exc}")
 
