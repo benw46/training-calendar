@@ -1006,6 +1006,35 @@ body {
   max-width: 460px;
 }
 
+/* Phone view: no room for two side-by-side columns, so stack everything in
+   one column top to bottom — tables, then the 3-month chart, then the
+   year chart — instead of the desktop table-column/chart-column layout. */
+@media (max-width: 700px) {
+  .graph-body--triple {
+    grid-template-columns: 1fr;
+  }
+
+  .graph-panel--table-stack {
+    grid-column: 1;
+    grid-row: 1;
+    /* Desktop pins this column's height to match the 3-month chart via an
+       inline style (so the two side-by-side columns line up) and clips any
+       overflow — irrelevant once everything stacks in one column instead. */
+    height: auto !important;
+    overflow: visible;
+  }
+
+  .graph-panel--chart-3mo {
+    grid-column: 1;
+    grid-row: 2;
+  }
+
+  .graph-panel--chart-year {
+    grid-column: 1;
+    grid-row: 3;
+  }
+}
+
 .pr-table {
   width: 100%;
   table-layout: fixed;
