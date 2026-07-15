@@ -19,6 +19,14 @@ async function request(path, opts = {}) {
     if (Array.isArray(detail)) {
       detail = detail.map(d => d?.msg ?? JSON.stringify(d)).join('; ')
     }
+    // A 401 here means the session itself is bad (expired/invalid) — no
+    // amount of retrying the request fixes that. Sign out so the app falls
+    // back to the login screen (App.jsx's onAuthStateChange listener picks
+    // this up) instead of leaving cryptic "Invalid or expired session"
+    // errors scattered across whichever components happened to be fetching.
+    if (res.status === 401) {
+      supabase.auth.signOut()
+    }
     throw new Error(detail || `API error ${res.status}`)
   }
   return res.json()

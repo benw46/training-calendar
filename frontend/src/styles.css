@@ -32,16 +32,23 @@ body {
      event banner's measured position. */
   background: linear-gradient(90deg, #334155 0%, #1e3a8a 50%, #334155 100%);
   flex-shrink: 0;
-  /* Once there's no more room, scroll horizontally rather than wrapping
-     button text or squeezing controls down to an unreadable width. */
-  overflow-x: auto;
-  overflow-y: hidden;
 }
 
 .app-header__title,
 .app-header__event-banner-wrap,
-.app-header__controls {
+.app-header__controls,
+.color-legend {
   flex-shrink: 0;
+}
+
+.app-header__controls {
+  /* Once there's no more room, scroll horizontally rather than wrapping
+     button text or squeezing controls down to an unreadable width. Scoped
+     to this element (not the whole header) so a popover from something
+     outside it — e.g. ColorLegend, rendered as its own header sibling —
+     doesn't get clipped by this overflow along with it. */
+  overflow-x: auto;
+  overflow-y: hidden;
 }
 
 .app-header__controls > * {
@@ -88,7 +95,6 @@ body {
   .app-header {
     flex-wrap: wrap;
     height: auto;
-    overflow-x: visible;
     padding: 8px 12px;
     row-gap: 8px;
   }
@@ -100,7 +106,16 @@ body {
   .app-header__controls {
     flex: 1 1 100%;
     flex-wrap: wrap;
+    overflow: visible;
     row-gap: 8px;
+  }
+
+  /* Right-aligned to match ColorLegend's old spot near the header's right
+     edge — but it now wraps to the left edge at this width, which would
+     push a right-aligned popover mostly off-screen. */
+  .color-legend__popover {
+    left: 0;
+    right: auto;
   }
 }
 
@@ -360,6 +375,7 @@ body {
   font-size: 16px;
   font-weight: 700;
   color: #111827;
+  cursor: pointer;
 }
 
 .mobile-day-nav__label--today {
@@ -441,6 +457,7 @@ body {
   padding: 4px 7px;
   border-bottom: 1px solid #eaecf0;
   background: #f8f9fb;
+  cursor: pointer;
 }
 
 .day-header--today {

@@ -105,7 +105,10 @@ export default function DayColumn({ date, today, workouts = [], onDayClick, onCa
   return (
     <div className="day-column">
       {!hideHeader && (
-        <div className={`day-header${isToday ? ' day-header--today' : ''}`}>
+        <div
+          className={`day-header${isToday ? ' day-header--today' : ''}`}
+          onClick={() => onDayClick?.(date)}
+        >
           <span className="day-header__primary">{primary}</span>
           {secondary && <span className="day-header__secondary">{secondary}</span>}
           {hasEvent && <span className="day-header__race-day">RACE DAY</span>}

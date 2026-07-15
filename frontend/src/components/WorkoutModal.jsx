@@ -162,7 +162,6 @@ export default function WorkoutModal({ workout, initialDate, onClose, onSaved, o
   }
 
   async function handleDelete() {
-    if (!confirm(`Delete this ${isEvent ? 'event' : isNote ? 'note' : 'workout'}?`)) return
     setDeleting(true)
     setSubmitError(null)
     try {

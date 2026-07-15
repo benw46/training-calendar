@@ -71,7 +71,10 @@ export default function MobileDayView({
         <button className="mobile-day-nav__btn" onClick={handlePrevDay} aria-label="Previous day">
           &lsaquo;
         </button>
-        <span className={`mobile-day-nav__label${isSameDay(selectedDate, today) ? ' mobile-day-nav__label--today' : ''}`}>
+        <span
+          className={`mobile-day-nav__label${isSameDay(selectedDate, today) ? ' mobile-day-nav__label--today' : ''}`}
+          onClick={() => onDayClick?.(selectedDate)}
+        >
           {isSameDay(selectedDate, today) ? 'Today' : dateLabel}
         </span>
         {hasEvent && <span className="mobile-day-nav__race-day">RACE DAY</span>}

@@ -229,8 +229,6 @@ export default function App() {
             {lastSynced ? `Last synced: ${formatSyncedAt(lastSynced)}` : 'Not yet synced'}
           </span>
 
-          <ColorLegend />
-
           <button
             className="app-header__signout-btn"
             onClick={() => supabase.auth.signOut()}
@@ -238,6 +236,12 @@ export default function App() {
             Sign out
           </button>
         </div>
+
+        {/* Deliberately outside .app-header__controls: that container is
+            horizontally scrollable/wrapping so the many buttons fit on
+            narrow screens, and its popover would get clipped by that
+            container's overflow if it lived inside it. */}
+        <ColorLegend />
       </header>
 
       {syncMsg && <div className="sync-toast">{syncMsg}</div>}
