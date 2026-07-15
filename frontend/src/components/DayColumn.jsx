@@ -4,7 +4,7 @@ import { isSameDay, formatDayHeader, toYMD } from '../utils/dates'
 import { sortDayWorkouts } from '../utils/workouts'
 import { api } from '../api/workouts'
 
-export default function DayColumn({ date, today, workouts = [], onDayClick, onCardClick, onMenuClick, onReordered }) {
+export default function DayColumn({ date, today, workouts = [], onDayClick, onCardClick, onMenuClick, onReordered, hideHeader = false }) {
   const isToday = isSameDay(date, today)
   const { primary, secondary } = formatDayHeader(date, today)
   const sorted = sortDayWorkouts(workouts)
@@ -104,11 +104,13 @@ export default function DayColumn({ date, today, workouts = [], onDayClick, onCa
 
   return (
     <div className="day-column">
-      <div className={`day-header${isToday ? ' day-header--today' : ''}`}>
-        <span className="day-header__primary">{primary}</span>
-        {secondary && <span className="day-header__secondary">{secondary}</span>}
-        {hasEvent && <span className="day-header__race-day">RACE DAY</span>}
-      </div>
+      {!hideHeader && (
+        <div className={`day-header${isToday ? ' day-header--today' : ''}`}>
+          <span className="day-header__primary">{primary}</span>
+          {secondary && <span className="day-header__secondary">{secondary}</span>}
+          {hasEvent && <span className="day-header__race-day">RACE DAY</span>}
+        </div>
+      )}
       <div
         className={`day-body${dragOverIndex === sorted.length ? ' day-body--drag-over' : ''}`}
         onClick={handleBodyClick}

@@ -4,6 +4,7 @@ import ColorLegend from './components/ColorLegend'
 import EventBanner from './components/EventBanner'
 import GraphsModal from './components/GraphsModal'
 import Login from './components/Login'
+import MobileDayView from './components/MobileDayView'
 import WorkoutModal from './components/WorkoutModal'
 import { api } from './api/workouts'
 import { formatSyncedAt } from './utils/dates'
@@ -11,7 +12,30 @@ import { supabase } from './supabaseClient'
 
 const MONTH_NAMES = ['January','February','March','April','May','June','July','August','September','October','November','December']
 
+// Below this width the 7-day desktop grid can't just shrink to fit — it
+// needs an entirely different layout, so the switch happens in JS (which
+// component tree mounts) rather than via CSS alone.
+const MOBILE_BREAKPOINT = 700
+
+function useIsMobile() {
+  const [isMobile, setIsMobile] = useState(
+    () => typeof window !== 'undefined' && window.innerWidth <= MOBILE_BREAKPOINT
+  )
+
+  useEffect(() => {
+    const mq = window.matchMedia(`(max-width: ${MOBILE_BREAKPOINT}px)`)
+    const update = () => setIsMobile(mq.matches)
+    update()
+    mq.addEventListener('change', update)
+    return () => mq.removeEventListener('change', update)
+  }, [])
+
+  return isMobile
+}
+
 export default function App() {
+  const isMobile = useIsMobile()
+
   // undefined = still checking for an existing session; null = signed out
   const [session, setSession] = useState(undefined)
 
@@ -218,16 +242,29 @@ export default function App() {
 
       {syncMsg && <div className="sync-toast">{syncMsg}</div>}
 
-      <Calendar
-        reloadRef={reloadRef}
-        scrollToTodayRef={scrollToTodayRef}
-        jumpToDateRef={jumpToDateRef}
-        onMonthChange={handleMonthChange}
-        onDayClick={handleDayClick}
-        onCardClick={handleCardClick}
-        onMenuClick={handleMenuClick}
-        onWorkoutsChanged={refreshNextEvents}
-      />
+      {isMobile ? (
+        <MobileDayView
+          reloadRef={reloadRef}
+          scrollToTodayRef={scrollToTodayRef}
+          jumpToDateRef={jumpToDateRef}
+          onMonthChange={handleMonthChange}
+          onDayClick={handleDayClick}
+          onCardClick={handleCardClick}
+          onMenuClick={handleMenuClick}
+          onWorkoutsChanged={refreshNextEvents}
+        />
+      ) : (
+        <Calendar
+          reloadRef={reloadRef}
+          scrollToTodayRef={scrollToTodayRef}
+          jumpToDateRef={jumpToDateRef}
+          onMonthChange={handleMonthChange}
+          onDayClick={handleDayClick}
+          onCardClick={handleCardClick}
+          onMenuClick={handleMenuClick}
+          onWorkoutsChanged={refreshNextEvents}
+        />
+      )}
 
       {modal && (
         <WorkoutModal

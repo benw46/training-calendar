@@ -79,6 +79,31 @@ body {
   }
 }
 
+/* Phone view (matches App.jsx's MOBILE_BREAKPOINT): there's no realistic
+   width at which the event banner + every control fit on one row, and
+   horizontal-scrolling the header works but hides content by default —
+   wrap onto as many lines as needed instead, so everything is visible with
+   no scrolling at all. */
+@media (max-width: 700px) {
+  .app-header {
+    flex-wrap: wrap;
+    height: auto;
+    overflow-x: visible;
+    padding: 8px 12px;
+    row-gap: 8px;
+  }
+
+  .app-header__event-banner-wrap {
+    flex: 1 1 100%;
+  }
+
+  .app-header__controls {
+    flex: 1 1 100%;
+    flex-wrap: wrap;
+    row-gap: 8px;
+  }
+}
+
 .app-header__event-banner-wrap {
   display: flex;
   align-items: center;
@@ -294,6 +319,67 @@ body {
   border-bottom: 1px solid #fecaca;
 }
 
+/* ── Mobile single-day view ───────────────────────────────── */
+
+.mobile-day-view {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  overflow: hidden;
+}
+
+.mobile-day-nav {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 12px;
+  background: #fff;
+  border-bottom: 1px solid #dde0e6;
+  flex-shrink: 0;
+}
+
+.mobile-day-nav__btn {
+  font-size: 20px;
+  line-height: 1;
+  width: 40px;
+  height: 40px;
+  border-radius: 6px;
+  border: 1px solid #d1d5db;
+  background: #f8f9fb;
+  color: #374151;
+  cursor: pointer;
+}
+
+.mobile-day-nav__btn:active {
+  background: #eaecf0;
+}
+
+.mobile-day-nav__label {
+  flex: 1;
+  text-align: center;
+  font-size: 16px;
+  font-weight: 700;
+  color: #111827;
+}
+
+.mobile-day-nav__label--today {
+  color: #1c3461;
+}
+
+.mobile-day-nav__race-day {
+  font-size: 11px;
+  font-weight: 700;
+  color: #b45309;
+  letter-spacing: 0.02em;
+  white-space: nowrap;
+}
+
+.mobile-day-body {
+  flex: 1;
+  overflow-y: auto;
+  padding: 8px;
+}
+
 /* Sticky day-name strip */
 .calendar-day-names {
   display: grid;
@@ -431,6 +517,26 @@ body {
 
 .day-body:hover .day-body__add-hint {
   opacity: 1;
+}
+
+/* No hover state on touch — show it outright instead of it never appearing. */
+.mobile-day-body .day-body__add-hint {
+  opacity: 1;
+}
+
+/* SummaryPanel is normally a sidebar to the right of a week's day columns
+   (hence its own left border) — stacked below the day's cards here instead,
+   so that border moves to the top and it gets its own rounded card frame. */
+.mobile-summary-panel {
+  margin-top: 12px;
+  border: 1px solid #dde0e6;
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.mobile-summary-panel .summary-panel {
+  border-left: none;
+  border-bottom: none;
 }
 
 /* ── Workout card ─────────────────────────────────────────── */
