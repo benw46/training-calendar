@@ -129,8 +129,8 @@ export default function SummaryPanel({ workoutsByDate, days, today }) {
             <div className={`summary-row${key === 'total' ? ' summary-row--total' : ''}`}>
               <span className="summary-row__dot" style={{ background: color }} />
               <span className="summary-row__label">{label}</span>
-              <span className="summary-row__planned-value">{fmtDuration(plannedByKey[key])}</span>
-              <span className="summary-row__value">{fmtDuration(actualByKey[key])}</span>
+              <span className="summary-row__planned-value">{fmtDuration(plannedByKey[key])}h</span>
+              <span className="summary-row__value">{fmtDuration(actualByKey[key])}h</span>
             </div>
             {key !== 'total' && (
               <div className="summary-row__progress">

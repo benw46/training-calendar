@@ -22,15 +22,17 @@ body {
 
 /* ── App header ───────────────────────────────────────────── */
 
+/* Grid (not flex) so the center group is guaranteed to sit at the header's
+   true horizontal center regardless of how wide the title vs. the end group
+   are — flex's justify-content: space-between only centers a middle child
+   when its neighbors are equal width, which title/end never are. */
 .app-header {
-  display: flex;
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
   align-items: center;
-  justify-content: space-between;
   padding: 0 16px;
   height: 42px;
-  /* Fallback only — App.jsx sets the real gradient inline, centered on the
-     event banner's measured position. */
-  background: linear-gradient(90deg, #334155 0%, #1e3a8a 50%, #334155 100%);
+  background: linear-gradient(90deg, #475569 0%, #1d4ed8 50%, #475569 100%);
   flex-shrink: 0;
 }
 
@@ -42,12 +44,25 @@ body {
   flex-shrink: 0;
 }
 
+/* Pin each to its column explicitly rather than trusting auto-placement —
+   title has display:none below 1300px, and a grid item that's actually
+   removed (unlike visibility:hidden) drops out of auto-placement, which
+   would shift .app-header__controls/.app-header__end left into columns
+   1 and 2 and break centering the moment the title disappears. */
+.app-header__title    { grid-column: 1; }
+.app-header__controls { grid-column: 2; }
+.app-header__end      { grid-column: 3; }
+
 .app-header__end {
   display: flex;
   align-items: center;
   flex-wrap: wrap;
   gap: 8px;
   row-gap: 8px;
+  /* Its grid column is 1fr (flexible), so without this it would stretch
+     to fill that column and its contents would sit at the column's left
+     edge rather than hugging the header's right edge. */
+  justify-self: end;
 }
 
 .app-header__end > * {
@@ -107,6 +122,11 @@ body {
    no scrolling at all. */
 @media (max-width: 700px) {
   .app-header {
+    /* Grid's centering only matters once title/controls/end can share a
+       row — below this width everything stacks instead, which is a plain
+       flex-wrap job. */
+    display: flex;
+    position: relative;
     flex-wrap: wrap;
     height: auto;
     padding: 8px 12px;
@@ -137,13 +157,31 @@ body {
 
   /* Desktop right-aligns this to match the icon's spot near the header's
      right edge, but at this width the icon can land almost anywhere
-     horizontally depending on how the rest of .app-header__end wraps —
-     centering under the icon (instead of assuming which side has room)
-     is the only positioning that reliably stays on-screen either way. */
+     horizontally depending on how the rest of .app-header__end wraps.
+     Centering under the icon still overflows the screen whenever the icon
+     itself lands near an edge (the popover is wider than the icon's
+     distance to that edge) — so instead .color-legend gives up being the
+     positioning parent (set to static below) and the popover positions
+     against .app-header instead, which spans the full viewport width. That
+     centers it on the screen rather than on the icon, which combined with
+     capping its width to the viewport guarantees it always stays fully
+     visible regardless of where the icon wraps to. */
+  .color-legend {
+    /* !important: this rule sits earlier in the file than the base
+       .color-legend { position: relative } rule below, which would
+       otherwise win the (equal-specificity) cascade regardless of this
+       media query matching. */
+    position: static !important;
+  }
+
   .color-legend__popover {
     left: 50%;
     right: auto;
     transform: translateX(-50%);
+    /* !important: same source-order issue as .color-legend above — the
+       base rule's `width: 350px` sits later in the file and would
+       otherwise win. */
+    width: min(350px, calc(100vw - 24px)) !important;
   }
 }
 
@@ -602,6 +640,11 @@ body {
 .workout-card--missed    { background: #ffe4e6; }
 .workout-card--unplanned { background: #f9fafb; }
 
+/* Notes always compute status "future" (no bar color of their own), so this
+   needs its own class rather than piggybacking on a status — otherwise it'd
+   also repaint every ordinary future-dated planned workout. */
+.workout-card--note      { background: #e0e7ff; }
+
 .workout-card:hover {
   box-shadow: 0 2px 8px rgba(0,0,0,0.10);
   border-color: #cdd0d8;
@@ -669,26 +712,60 @@ body {
   color: #374151 !important;
 }
 
-.workout-card__actual {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 7px;
+/* A: duration/distance and P: duration/distance render as two rows here,
+   but need their columns (duration, distance) to line up with each other —
+   a plain flex row per line can't do that since each row's own content
+   width sets where its second item starts. Grid solves it: .workout-card__actual
+   and .workout-card__planned go `display: contents` so their spans become
+   direct items of this grid, letting the grid size each column (via the
+   shared workout-card__stat-label/value--duration/--distance placement) to
+   fit the widest value across both rows.
+
+   The label ("A:"/"P:") and value get separate columns rather than one
+   combined span per stat: "A:" is bold and "P:" isn't, so the two render at
+   different widths even for identical text, which would push the actual
+   and planned values out of alignment if label+value shared a column. */
+.workout-card__stats {
+  display: grid;
+  grid-template-columns: max-content max-content max-content max-content;
+  column-gap: 3px;
+}
+
+.workout-card__actual,
+.workout-card__planned {
+  display: contents;
   font-size: 11px;
-  font-weight: 600;
-  color: #111827;
   line-height: 1.35;
   font-variant-numeric: tabular-nums;
 }
 
+.workout-card__actual {
+  font-weight: 600;
+  color: #111827;
+}
+
 .workout-card__planned {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 7px;
-  font-size: 11px;
   font-weight: 500;
   color: #adb5c4;
-  line-height: 1.35;
-  font-variant-numeric: tabular-nums;
+}
+
+.workout-card__stat-label--duration {
+  grid-column: 1;
+}
+
+.workout-card__stat-value--duration {
+  grid-column: 2;
+}
+
+.workout-card__stat-label--distance {
+  grid-column: 3;
+  /* Extra breathing room between the duration group and distance group,
+     on top of the (deliberately tight) label-to-value column-gap. */
+  margin-left: 4px;
+}
+
+.workout-card__stat-value--distance {
+  grid-column: 4;
 }
 
 .workout-card__description {
@@ -1278,7 +1355,17 @@ body {
   top: 100%;
   right: 0;
   margin-top: 8px;
-  width: 300px;
+  /* Wide enough that every color/duration-input row renders on one line
+     instead of wrapping (verified against the actual longest rows) — the
+     one exception is the credit line at the bottom, which is fine to wrap
+     and would need ~500px on its own to stop. */
+  width: 350px;
+  /* .app-header__end > * sets white-space: nowrap for its direct children
+     (so header buttons/labels never wrap) — an inherited property, so
+     without resetting it here every text node inside this popover (a
+     descendant of that rule's target) would also refuse to wrap and run
+     straight off the edge of the box instead. */
+  white-space: normal;
   background: #fff;
   border: 1px solid #dde0e6;
   border-radius: 8px;
@@ -1317,6 +1404,10 @@ body {
   color: #374151;
   width: 62px;
   flex-shrink: 0;
+  /* Extra breathing room before the explanation text, on top of the row's
+     general 7px gap (which also applies before this label, between it and
+     the color dot — that gap should stay tighter than this one). */
+  margin-right: 10px;
 }
 
 .color-legend__text {

@@ -1,11 +1,11 @@
 import { STATUS_BAR_COLOR } from '../utils/workouts'
 
 const ROWS = [
-  { status: 'done',      label: 'Done',      text: '≥80% of planned completed' },
-  { status: 'partial',   label: 'Partial',   text: 'some of planned completed (≤80%)' },
-  { status: 'missed',    label: 'Missed',    text: 'nothing logged, plan not met' },
-  { status: 'unplanned', label: 'Unplanned', text: 'imported from Garmin, no plan existed' },
-  { status: 'future',    label: 'Future',    text: "hasn't happened yet" },
+  { status: 'done',      label: 'Done',      text: '≥80% of planned completed.' },
+  { status: 'partial',   label: 'Partial',   text: 'Some of planned completed (≤80%).' },
+  { status: 'missed',    label: 'Missed',    text: 'Nothing logged, plan not met.' },
+  { status: 'unplanned', label: 'Unplanned', text: 'Imported from Garmin, no plan existed.' },
+  { status: 'future',    label: 'Future',    text: "Hasn't happened yet." },
 ]
 
 export default function ColorLegend() {

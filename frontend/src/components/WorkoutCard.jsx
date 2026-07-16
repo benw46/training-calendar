@@ -8,10 +8,14 @@ export default function WorkoutCard({
   const status = getCardStatus(workout, today)
   const barColor = STATUS_BAR_COLOR[status]
 
+  // Strength has no meaningful distance, so that field never shows for it —
+  // just duration, same layout as every other sport minus the distance column.
+  const isStrength = workout.sport === 'strength'
+
   const actualDur = fmtDuration(workout.actual_duration_minutes)
-  const actualDist = fmtDistance(workout.actual_distance_km)
+  const actualDist = isStrength ? null : fmtDistance(workout.actual_distance_km)
   const plannedDur = fmtDuration(workout.planned_duration_minutes)
-  const plannedDist = fmtDistance(workout.planned_distance_km)
+  const plannedDist = isStrength ? null : fmtDistance(workout.planned_distance_km)
 
   const isEvent = workout.sport === 'event'
   const daysUntil = isEvent
@@ -34,6 +38,7 @@ export default function WorkoutCard({
     'workout-card',
     `workout-card--${status}`,
     isEvent && 'workout-card--event',
+    workout.sport === 'note' && 'workout-card--note',
     isDragging && 'workout-card--dragging',
     isDragOver && 'workout-card--drag-over',
   ].filter(Boolean).join(' ')
@@ -65,16 +70,40 @@ export default function WorkoutCard({
 
         {workout.sport !== 'note' && workout.sport !== 'event' && (
           <>
-            {(actualDur || actualDist) && (
-              <div className="workout-card__actual">
-                {actualDur && <span>A: {actualDur}</span>}
-                {actualDist && <span>{actualDist}</span>}
-              </div>
-            )}
-            {(plannedDur || plannedDist) && (
-              <div className="workout-card__planned">
-                {plannedDur && <span>P: {plannedDur}</span>}
-                {plannedDist && <span>P: {plannedDist}</span>}
+            {(actualDur || actualDist || plannedDur || plannedDist) && (
+              <div className="workout-card__stats">
+                {(actualDur || actualDist) && (
+                  <div className="workout-card__actual">
+                    {actualDur && (
+                      <>
+                        <span className="workout-card__stat-label workout-card__stat-label--duration">A:</span>
+                        <span className="workout-card__stat-value workout-card__stat-value--duration">{actualDur}h</span>
+                      </>
+                    )}
+                    {actualDist && (
+                      <>
+                        <span className="workout-card__stat-label workout-card__stat-label--distance">A:</span>
+                        <span className="workout-card__stat-value workout-card__stat-value--distance">{actualDist}</span>
+                      </>
+                    )}
+                  </div>
+                )}
+                {(plannedDur || plannedDist) && (
+                  <div className="workout-card__planned">
+                    {plannedDur && (
+                      <>
+                        <span className="workout-card__stat-label workout-card__stat-label--duration">P:</span>
+                        <span className="workout-card__stat-value workout-card__stat-value--duration">{plannedDur}h</span>
+                      </>
+                    )}
+                    {plannedDist && (
+                      <>
+                        <span className="workout-card__stat-label workout-card__stat-label--distance">P:</span>
+                        <span className="workout-card__stat-value workout-card__stat-value--distance">{plannedDist}</span>
+                      </>
+                    )}
+                  </div>
+                )}
               </div>
             )}
           </>

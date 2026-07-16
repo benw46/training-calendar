@@ -56,7 +56,7 @@ export function fmtDuration(minutes) {
 
 export function fmtDistance(km) {
   if (km == null) return null
-  return `${km % 1 === 0 ? km : km.toFixed(1)} km`
+  return `${km.toFixed(1)}km`
 }
 
 export function listToByDate(list) {

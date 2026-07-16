@@ -3,7 +3,7 @@ import { useState, useEffect } from 'react'
 const LINE_HEIGHT = 16 // px — must match .app-header__event-banner-line height in styles.css
 const INTERVAL_MS = 6000
 
-export default function EventBanner({ lines, wrapRef }) {
+export default function EventBanner({ lines }) {
   const [index, setIndex] = useState(0)
 
   useEffect(() => {
@@ -23,7 +23,7 @@ export default function EventBanner({ lines, wrapRef }) {
   const offset = (lines.length - 1 - index) * LINE_HEIGHT
 
   return (
-    <span className="app-header__event-banner-wrap" ref={wrapRef}>
+    <span className="app-header__event-banner-wrap">
       <span className="app-header__event-banner">
         <span
           className="app-header__event-banner-strip"

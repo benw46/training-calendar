@@ -201,7 +201,7 @@ function PersonalBestsTable({ records }) {
         {records.map(r => (
           <tr key={r.key}>
             <td>{r.label}</td>
-            <td>{r.distanceKm != null ? `${r.distanceKm} km` : '—'}</td>
+            <td>{r.distanceKm != null ? `${r.distanceKm}km` : '—'}</td>
             <td>{r.date ? formatFullDate(r.date) : '—'}</td>
             <td>{r.date ? timeSince(r.date) : '—'}</td>
           </tr>
@@ -414,7 +414,7 @@ export default function GraphsModal({ onClose }) {
             style={threeMoSize ? { height: threeMoSize.height } : undefined}
           >
             <div className="graph-panel--table-block">
-              <h3 className="graph-panel-title">Personal Bests - Races</h3>
+              <h3 className="graph-panel-title">Personal Bests — Races</h3>
               {errorRaces && <div className="modal-submit-error">Couldn't load data — {errorRaces}</div>}
               {!errorRaces && !raceBests && <div className="graph-loading">Loading…</div>}
               {raceBests && <RaceBestsTable records={raceBests} onSave={handleSaveRaceBest} />}

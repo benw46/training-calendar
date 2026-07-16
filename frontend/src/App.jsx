@@ -1,4 +1,4 @@
-import { useRef, useState, useCallback, useEffect, useMemo, useLayoutEffect } from 'react'
+import { useRef, useState, useCallback, useEffect, useMemo } from 'react'
 import Calendar from './components/Calendar'
 import ColorLegend from './components/ColorLegend'
 import EventBanner from './components/EventBanner'
@@ -62,15 +62,6 @@ export default function App() {
   const [nextEvents, setNextEvents] = useState([])
   const [showGraphs, setShowGraphs] = useState(false)
 
-  // The header's gradient is centered on the event banner's actual position
-  // (measured live) rather than a hardcoded percentage, since the banner
-  // doesn't sit at a fixed spot — its distance from the left edge depends on
-  // the title's width on one side and however many controls render on the
-  // other.
-  const headerRef = useRef(null)
-  const bannerWrapRef = useRef(null)
-  const [gradientCenterPct, setGradientCenterPct] = useState(50)
-
   const monthLabel = `${MONTH_NAMES[visibleMonth.getMonth()]} ${visibleMonth.getFullYear()}`
 
   // Memoized so the array reference only changes when the fetched events
@@ -86,31 +77,6 @@ export default function App() {
       return daysUntil === 0 ? `${ev.name} today` : `${daysUntil} days until ${ev.name}`
     })
   }, [nextEvents])
-
-  // The header's gradient is centered on the event banner's actual position
-  // (measured live) rather than a hardcoded percentage, since the banner
-  // doesn't sit at a fixed spot — its distance from the left edge depends on
-  // the title's width on one side and however many controls render on the
-  // other.
-  useLayoutEffect(() => {
-    const headerEl = headerRef.current
-    const bannerEl = bannerWrapRef.current
-    if (!headerEl || !bannerEl) return
-
-    function updateCenter() {
-      const headerRect = headerEl.getBoundingClientRect()
-      const bannerRect = bannerEl.getBoundingClientRect()
-      if (headerRect.width === 0) return
-      const bannerCenterX = bannerRect.left + bannerRect.width / 2 - headerRect.left
-      setGradientCenterPct((bannerCenterX / headerRect.width) * 100)
-    }
-
-    updateCenter()
-    const ro = new ResizeObserver(updateCenter)
-    ro.observe(headerEl)
-    ro.observe(bannerEl)
-    return () => ro.disconnect()
-  }, [eventBannerLines])
 
   // A sync may have happened in a previous session, so read the persisted
   // timestamp on mount rather than only tracking it after a sync in this one.
@@ -178,26 +144,18 @@ export default function App() {
 
   return (
     <div className="app">
-      <header
-        className="app-header"
-        ref={headerRef}
-        style={{
-          background: `linear-gradient(90deg, #334155 0%, #1e3a8a ${gradientCenterPct}%, #334155 100%)`,
-        }}
-      >
+      <header className="app-header">
         <span className="app-header__title">
           <span className="app-header__brand">RaceCondition</span>
           <span className="app-header__subtitle">The Vibe-Coded Triathlon Calendar</span>
         </span>
 
-        <EventBanner lines={eventBannerLines} wrapRef={bannerWrapRef} />
-
         <div className="app-header__controls">
           <button
-            className="app-header__graphs-btn"
-            onClick={() => setShowGraphs(true)}
+            className="app-header__today-btn"
+            onClick={() => scrollToTodayRef.current?.()}
           >
-            Graphs
+            Today
           </button>
 
           <div className="month-nav">
@@ -210,21 +168,24 @@ export default function App() {
             </button>
           </div>
 
-          <button
-            className="app-header__today-btn"
-            onClick={() => scrollToTodayRef.current?.()}
-          >
-            Today
-          </button>
+          <EventBanner lines={eventBannerLines} />
         </div>
 
         {/* Deliberately outside .app-header__controls: that container is
             horizontally scrollable, and ColorLegend's popover would get
             clipped by that container's overflow if it lived inside it.
-            Grouped together here so Sync/Last-synced/Legend/Sign-out always
-            stay on the same line as each other, wrapping as one unit rather
-            than being scattered wherever the nav controls happen to wrap. */}
+            Grouped together here so Graphs/Sync/Last-synced/Legend/Sign-out
+            always stay on the same line as each other, wrapping as one unit
+            rather than being scattered wherever the nav controls happen to
+            wrap. */}
         <div className="app-header__end">
+          <button
+            className="app-header__graphs-btn"
+            onClick={() => setShowGraphs(true)}
+          >
+            Graphs
+          </button>
+
           <button
             className="app-header__sync-btn"
             onClick={handleGarminSync}

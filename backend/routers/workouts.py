@@ -60,7 +60,11 @@ def create_workout(body: WorkoutCreate):
 
 @router.put("/{workout_id}", response_model=WorkoutOut)
 def update_workout(workout_id: int, body: WorkoutUpdate):
-    updates = {k: v for k, v in body.model_dump().items() if v is not None}
+    # exclude_unset (rather than dropping None values) so a field can be
+    # explicitly cleared to null — e.g. deleting a description, or a
+    # duration/distance that no longer applies after switching sport —
+    # without that clear being silently dropped as if it were never sent.
+    updates = body.model_dump(exclude_unset=True)
     if not updates:
         raise HTTPException(status_code=400, detail="No fields to update")
 
