@@ -7,7 +7,7 @@ import { api } from '../api/workouts'
 
 export default function MobileDayView({
   reloadRef, scrollToTodayRef, jumpToDateRef, onMonthChange,
-  onDayClick, onCardClick, onMenuClick, onWorkoutsChanged,
+  onDayClick, onCardClick, onWorkoutsChanged,
 }) {
   const [today] = useState(() => {
     const t = new Date()
@@ -92,7 +92,6 @@ export default function MobileDayView({
           workouts={workouts}
           onDayClick={onDayClick}
           onCardClick={onCardClick}
-          onMenuClick={onMenuClick}
           onReordered={handleReordered}
           hideHeader
         />

@@ -2,8 +2,9 @@ import SportIcon from './SportIcon'
 import { getCardStatus, fmtDuration, fmtDistance, STATUS_BAR_COLOR } from '../utils/workouts'
 
 export default function WorkoutCard({
-  workout, today, onClick, onMenuClick,
+  workout, today, onClick,
   isDragging, isDragOver, onDragStart, onDragOver, onDrop, onDragEnd,
+  titleRowRef,
 }) {
   const status = getCardStatus(workout, today)
   const barColor = STATUS_BAR_COLOR[status]
@@ -28,11 +29,6 @@ export default function WorkoutCard({
       : daysUntil === 0
         ? 'Today'
         : `${Math.abs(daysUntil)} days ago`
-
-  function handleMenu(e) {
-    e.stopPropagation()
-    onMenuClick?.(workout, e)
-  }
 
   const className = [
     'workout-card',
@@ -59,9 +55,10 @@ export default function WorkoutCard({
           <p className="workout-card__countdown">{countdownLabel}</p>
         )}
         <div className="workout-card__top">
-          <SportIcon sport={workout.sport} />
-          <span className="workout-card__name">{workout.name}</span>
-          <button className="workout-card__menu" onClick={handleMenu} aria-label="Options">⋮</button>
+          <span className="workout-card__title-group" ref={titleRowRef}>
+            <SportIcon sport={workout.sport} />
+            <span className="workout-card__name">{workout.name}</span>
+          </span>
         </div>
 
         {workout.description && (

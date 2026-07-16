@@ -26,6 +26,7 @@ class WorkoutBase(BaseModel):
     completed: bool = False
     garmin_activity_id: Optional[str] = None
     description: Optional[str] = None
+    is_brick: bool = False
 
 
 class WorkoutCreate(WorkoutBase):
@@ -43,6 +44,7 @@ class WorkoutUpdate(BaseModel):
     completed: Optional[bool] = None
     description: Optional[str] = None
     sort_order: Optional[int] = None
+    is_brick: Optional[bool] = None
 
 
 class WorkoutOut(WorkoutBase):
@@ -64,6 +66,7 @@ class WorkoutOut(WorkoutBase):
             garmin_activity_id=row["garmin_activity_id"],
             description=row["description"],
             sort_order=row["sort_order"],
+            is_brick=bool(row["is_brick"]),
         )
 
 

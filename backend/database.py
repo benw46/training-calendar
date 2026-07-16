@@ -24,6 +24,12 @@ SCHEMA_SQL = """
         sort_order INTEGER
     );
 
+    -- CREATE TABLE IF NOT EXISTS is a no-op against the already-existing
+    -- table (this deploy isn't creating workouts fresh), so a new column
+    -- needs its own migration statement — ADD COLUMN IF NOT EXISTS is
+    -- safe to re-run on every startup, same as the CREATE TABLEs above.
+    ALTER TABLE workouts ADD COLUMN IF NOT EXISTS is_brick BOOLEAN NOT NULL DEFAULT FALSE;
+
     CREATE TABLE IF NOT EXISTS sync_status (
         id INTEGER PRIMARY KEY CHECK (id = 1),
         last_synced_at TEXT,

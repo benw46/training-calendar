@@ -211,12 +211,30 @@ function PersonalBestsTable({ records }) {
   )
 }
 
-function WeeklyDurationChart({ points, labelStep = 2, ariaLabel, width = 340, height = 260, svgRef }) {
+function WeeklyDurationChart({ points, ariaLabel, width = 340, height = 260, svgRef }) {
   const [hoverIndex, setHoverIndex] = useState(null)
 
   const padding = { top: 16, right: 12, bottom: 34, left: 38 }
   const innerW = width - padding.left - padding.right
   const innerH = height - padding.top - padding.bottom
+
+  // Rather than a fixed "label every Nth point" step — which reads fine at
+  // the width it was tuned for but overlaps badly once the same chart (e.g.
+  // this component reused at 52 points for the year view) gets squeezed
+  // into a narrower container, such as phone view's single-column stack —
+  // derive the step from how much width is actually available per label.
+  const MIN_PX_PER_LABEL = 42
+  const labelStep = Math.max(1, Math.ceil((points.length * MIN_PX_PER_LABEL) / innerW))
+  const lastIndex = points.length - 1
+  // The final point always gets a label (so the chart's right edge date is
+  // never blank), but that can land less than a full step past the last
+  // regular one — closer than labelStep guarantees anywhere else — and
+  // visually crowd or overlap it. Drop that last regular label instead.
+  function shouldShowLabel(i) {
+    if (i === lastIndex) return true
+    if (i % labelStep !== 0) return false
+    return lastIndex - i >= labelStep
+  }
 
   const maxHours = Math.max(1, ...points.map(p => p.hours))
   const yMax = Math.max(2, Math.ceil(maxHours / 2) * 2)
@@ -257,7 +275,7 @@ function WeeklyDurationChart({ points, labelStep = 2, ariaLabel, width = 340, he
       })}
 
       {points.map((p, i) => (
-        (i % labelStep === 0 || i === points.length - 1) && (
+        shouldShowLabel(i) && (
           <text key={i} x={xAt(i)} y={height - padding.bottom + 18}
                 textAnchor="middle" fontSize="9" fill="#6b7280">
             {p.label}
@@ -435,7 +453,6 @@ export default function GraphsModal({ onClose }) {
             {weekly3mo && (
               <WeeklyDurationChart
                 points={weekly3mo}
-                labelStep={2}
                 svgRef={threeMoWrapRef}
                 ariaLabel="Total workout duration per week, in hours, over the last three months"
               />
@@ -449,7 +466,6 @@ export default function GraphsModal({ onClose }) {
             {weeklyYear && (
               <WeeklyDurationChart
                 points={weeklyYear}
-                labelStep={2}
                 width={yearViewBoxWidth}
                 height={yearViewBoxHeight}
                 ariaLabel="Total workout duration per week, in hours, over the last year"

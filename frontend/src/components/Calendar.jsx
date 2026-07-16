@@ -16,7 +16,7 @@ const ROOT_MARGIN   = '150px'
 const LOOKBACK_DAYS = 7
 
 export default function Calendar({
-  onDayClick, onCardClick, onMenuClick,
+  onDayClick, onCardClick,
   reloadRef, scrollToTodayRef, jumpToDateRef, onMonthChange, onWorkoutsChanged,
 }) {
   const today = new Date()
@@ -299,7 +299,6 @@ export default function Calendar({
                   workoutsByDate={workoutsByDate}
                   onDayClick={onDayClick}
                   onCardClick={onCardClick}
-                  onMenuClick={onMenuClick}
                   onReordered={handleReordered}
                 />
               </div>

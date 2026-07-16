@@ -118,7 +118,6 @@ export default function App() {
 
   function handleDayClick(date)     { setModal({ type: 'add', date }) }
   function handleCardClick(workout) { setModal({ type: 'edit', workout }) }
-  function handleMenuClick(workout) { setModal({ type: 'edit', workout }) }
   function handleSaved()   { setModal(null); reloadRef.current?.(); refreshNextEvents() }
   function handleDeleted() { setModal(null); reloadRef.current?.(); refreshNextEvents() }
 
@@ -224,7 +223,6 @@ export default function App() {
           onMonthChange={handleMonthChange}
           onDayClick={handleDayClick}
           onCardClick={handleCardClick}
-          onMenuClick={handleMenuClick}
           onWorkoutsChanged={refreshNextEvents}
         />
       ) : (
@@ -235,7 +233,6 @@ export default function App() {
           onMonthChange={handleMonthChange}
           onDayClick={handleDayClick}
           onCardClick={handleCardClick}
-          onMenuClick={handleMenuClick}
           onWorkoutsChanged={refreshNextEvents}
         />
       )}
