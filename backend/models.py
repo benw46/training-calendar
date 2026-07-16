@@ -23,7 +23,6 @@ class WorkoutBase(BaseModel):
     planned_distance_km: Optional[float] = None
     actual_duration_minutes: Optional[int] = None
     actual_distance_km: Optional[float] = None
-    completed: bool = False
     garmin_activity_id: Optional[str] = None
     description: Optional[str] = None
     is_brick: bool = False
@@ -41,7 +40,6 @@ class WorkoutUpdate(BaseModel):
     planned_distance_km: Optional[float] = None
     actual_duration_minutes: Optional[int] = None
     actual_distance_km: Optional[float] = None
-    completed: Optional[bool] = None
     description: Optional[str] = None
     sort_order: Optional[int] = None
     is_brick: Optional[bool] = None
@@ -62,7 +60,6 @@ class WorkoutOut(WorkoutBase):
             planned_distance_km=row["planned_distance_km"],
             actual_duration_minutes=row["actual_duration_minutes"],
             actual_distance_km=row["actual_distance_km"],
-            completed=bool(row["completed"]),
             garmin_activity_id=row["garmin_activity_id"],
             description=row["description"],
             sort_order=row["sort_order"],

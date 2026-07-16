@@ -18,7 +18,6 @@ SCHEMA_SQL = """
         planned_distance_km REAL,
         actual_duration_minutes INTEGER,
         actual_distance_km REAL,
-        completed BOOLEAN NOT NULL DEFAULT FALSE,
         garmin_activity_id TEXT,
         description TEXT,
         sort_order INTEGER
@@ -29,6 +28,12 @@ SCHEMA_SQL = """
     -- needs its own migration statement — ADD COLUMN IF NOT EXISTS is
     -- safe to re-run on every startup, same as the CREATE TABLEs above.
     ALTER TABLE workouts ADD COLUMN IF NOT EXISTS is_brick BOOLEAN NOT NULL DEFAULT FALSE;
+
+    -- completed was write-only (set on insert/Garmin sync, never read —
+    -- actual card status is derived from planned vs. actual numbers
+    -- instead) and has been fully removed from the model/code; drop it
+    -- from any database that still has it from before this cleanup.
+    ALTER TABLE workouts DROP COLUMN IF EXISTS completed;
 
     CREATE TABLE IF NOT EXISTS sync_status (
         id INTEGER PRIMARY KEY CHECK (id = 1),

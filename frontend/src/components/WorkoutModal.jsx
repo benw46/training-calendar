@@ -3,6 +3,8 @@ import { api } from '../api/workouts'
 import { addWeeks, toYMD } from '../utils/dates'
 
 const SPORTS = ['swim', 'bike', 'run', 'strength', 'other', 'note', 'event', 'period']
+const MAX_DURATION_MINUTES = 100 * 60
+const MAX_DISTANCE_KM = 500
 
 function parseDuration(str) {
   if (!str || !str.trim()) return null
@@ -10,7 +12,7 @@ function parseDuration(str) {
   if (parts.length !== 2) return null
   const h = parseInt(parts[0], 10)
   const m = parseInt(parts[1], 10)
-  if (isNaN(h) || isNaN(m) || m < 0 || m > 59) return null
+  if (isNaN(h) || isNaN(m) || h < 0 || m < 0 || m > 59) return null
   return h * 60 + m
 }
 
@@ -116,15 +118,41 @@ export default function WorkoutModal({ workout, initialDate, onClose, onSaved, o
     setErrors(e => ({ ...e, [field]: null }))
   }
 
+  function validateDuration(str) {
+    if (!str) return null
+    const parsed = parseDuration(str)
+    if (parsed === null) return 'Use h:mm'
+    if (parsed > MAX_DURATION_MINUTES) return 'Max 100h'
+    return null
+  }
+
+  // The distance inputs are type="number" min="0", but the form is
+  // noValidate (so the shorthand-duration/date-picker fields aren't fought
+  // by the browser's own validation UI) — which also switches off min="0"
+  // enforcement, so both bounds have to be checked here instead.
+  function validateDistance(str) {
+    if (str === '') return null
+    const v = parseFloat(str)
+    if (isNaN(v) || v < 0) return 'Can’t be negative'
+    if (v > MAX_DISTANCE_KM) return 'Max 500km'
+    return null
+  }
+
   function validate(values) {
     const errs = {}
     if (!values.date)  errs.date  = 'Required'
     if (!isPeriod && !values.name.trim()) errs.name = 'Required'
     if (!isNoteLike && !isPeriod) {
-      if (values.planned_duration && parseDuration(values.planned_duration) === null)
-        errs.planned_duration = 'Use h:mm'
-      if (values.actual_duration && parseDuration(values.actual_duration) === null)
-        errs.actual_duration = 'Use h:mm'
+      const plannedDurationErr = validateDuration(values.planned_duration)
+      if (plannedDurationErr) errs.planned_duration = plannedDurationErr
+      const actualDurationErr = validateDuration(values.actual_duration)
+      if (actualDurationErr) errs.actual_duration = actualDurationErr
+      if (!isStrength) {
+        const plannedDistanceErr = validateDistance(values.planned_distance)
+        if (plannedDistanceErr) errs.planned_distance = plannedDistanceErr
+        const actualDistanceErr = validateDistance(values.actual_distance)
+        if (actualDistanceErr) errs.actual_distance = actualDistanceErr
+      }
     }
     return errs
   }
@@ -344,13 +372,15 @@ export default function WorkoutModal({ workout, initialDate, onClose, onSaved, o
                     <label className="form-label">Distance (km)</label>
                     <input
                       type="number"
-                      className="form-input"
+                      className={`form-input${errors.planned_distance ? ' form-input--error' : ''}`}
                       placeholder="0.0"
                       min="0"
+                      max={MAX_DISTANCE_KM}
                       step="0.1"
                       value={form.planned_distance}
                       onChange={e => set('planned_distance', e.target.value)}
                     />
+                    {errors.planned_distance && <span className="form-error">{errors.planned_distance}</span>}
                   </div>
                 )}
               </div>
@@ -375,13 +405,15 @@ export default function WorkoutModal({ workout, initialDate, onClose, onSaved, o
                     <label className="form-label">Distance (km)</label>
                     <input
                       type="number"
-                      className="form-input"
+                      className={`form-input${errors.actual_distance ? ' form-input--error' : ''}`}
                       placeholder="0.0"
                       min="0"
+                      max={MAX_DISTANCE_KM}
                       step="0.1"
                       value={form.actual_distance}
                       onChange={e => set('actual_distance', e.target.value)}
                     />
+                    {errors.actual_distance && <span className="form-error">{errors.actual_distance}</span>}
                   </div>
                 )}
               </div>

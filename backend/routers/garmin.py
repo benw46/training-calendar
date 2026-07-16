@@ -163,8 +163,8 @@ def sync_garmin():
                     conn.execute(
                         """INSERT INTO workouts
                            (date, sport, name, actual_duration_minutes, actual_distance_km,
-                            completed, garmin_activity_id)
-                           VALUES (?, ?, ?, ?, ?, TRUE, ?)""",
+                            garmin_activity_id)
+                           VALUES (?, ?, ?, ?, ?, ?)""",
                         (activity_date, sport, activity_name, duration_minutes, distance_km, garmin_id),
                     )
                     unmatched += 1
@@ -180,7 +180,7 @@ def sync_garmin():
                     conn.execute(
                         """UPDATE workouts SET
                            actual_duration_minutes = ?, actual_distance_km = ?,
-                           garmin_activity_id = ?, completed = TRUE
+                           garmin_activity_id = ?
                            WHERE id = ?""",
                         (duration_minutes, distance_km, garmin_id, match["id"]),
                     )

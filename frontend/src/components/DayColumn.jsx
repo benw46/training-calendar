@@ -8,6 +8,7 @@ const BRICK_RAIL_INSET = 8 // px in from the day-body's right edge, where every 
 const BRICK_DASH_UNIT = 6 // nominal dash+gap length in px, before being fitted to each path's exact length
 const BRICK_DASH_FRACTION = 0.55 // dash portion of each unit; the rest is gap
 const BRICK_LABEL_OFFSET = 6 // px the "BRICK" label sits off to the side of the line, so it doesn't sit on top of the dashes
+const BRICK_TITLE_GAP = 3 // px of breathing room between a title's edge and where the dashed line starts/ends, so it doesn't touch the text
 
 // The transition each brick-able sport leads into, mirroring triathlon's own
 // T1 (swim -> bike) and T2 (bike -> run) transitions.
@@ -69,7 +70,10 @@ export default function DayColumn({ date, today, workouts = [], onDayClick, onCa
         if (rects.some(r => !r)) return null
 
         const points = rects.map(r => ({
-          x: r.right - bodyRect.left,
+          // Stops a couple pixels shy of the title's actual edge (toward
+          // the rail) rather than touching it exactly, so the dashes don't
+          // run right up against the text.
+          x: r.right - bodyRect.left + BRICK_TITLE_GAP,
           y: r.top + r.height / 2 - bodyRect.top,
         }))
 
