@@ -92,7 +92,9 @@ export default function WorkoutModal({ workout, initialDate, onClose, onSaved, o
   const isNoteLike = isNote || isEvent
   const isStrength = form.sport === 'strength'
   const isPeriod = form.sport === 'period'
-  const isBike = form.sport === 'bike'
+  // Swim and Bike are the two disciplines a brick transitions out of
+  // (mirroring triathlon's T1/T2) — see DayColumn's BRICK_NEXT_SPORT.
+  const isBrickable = form.sport === 'swim' || form.sport === 'bike'
   const close = useCallback(onClose, [onClose])
   const dateInputRef = useRef(null)
 
@@ -197,7 +199,7 @@ export default function WorkoutModal({ workout, initialDate, onClose, onSaved, o
       planned_distance_km:     isNoteLike || isStrength ? null : (values.planned_distance !== '' ? parseFloat(values.planned_distance) : null),
       actual_duration_minutes:  isNoteLike ? null : parseDuration(values.actual_duration),
       actual_distance_km:      isNoteLike || isStrength ? null : (values.actual_distance !== '' ? parseFloat(values.actual_distance) : null),
-      is_brick:                isBike ? values.is_brick : false,
+      is_brick:                isBrickable ? values.is_brick : false,
     }
 
     setSaving(true)
@@ -386,7 +388,7 @@ export default function WorkoutModal({ workout, initialDate, onClose, onSaved, o
             </>
           )}
 
-          {isBike && (
+          {isBrickable && (
             <div className="form-row form-checkbox-row">
               <label className="form-checkbox-label">
                 <input

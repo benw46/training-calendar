@@ -9,19 +9,37 @@ const BRICK_DASH_UNIT = 6 // nominal dash+gap length in px, before being fitted 
 const BRICK_DASH_FRACTION = 0.55 // dash portion of each unit; the rest is gap
 const BRICK_LABEL_OFFSET = 6 // px the "BRICK" label sits off to the side of the line, so it doesn't sit on top of the dashes
 
+// The transition each brick-able sport leads into, mirroring triathlon's own
+// T1 (swim -> bike) and T2 (bike -> run) transitions.
+const BRICK_NEXT_SPORT = { swim: 'bike', bike: 'run' }
+
 export default function DayColumn({ date, today, workouts = [], onDayClick, onCardClick, onReordered, hideHeader = false }) {
   const isToday = isSameDay(date, today)
   const { primary, secondary } = formatDayHeader(date, today)
   const sorted = sortDayWorkouts(workouts)
   const hasEvent = workouts.some(w => w.sport === 'event')
 
-  // A bike marked "Brick" with a run directly under it gets a dotted line
-  // routed from its title, right to a rail aligned with the cards' right
-  // edge, down past whatever's in between, then left into the run's title
-  // — see the measuring effect below.
-  const brickPairs = sorted
-    .map((w, i) => [w, sorted[i + 1]])
-    .filter(([bike, run]) => bike.sport === 'bike' && bike.is_brick && run?.sport === 'run')
+  // Consecutive runs of brick-linked workouts (e.g. a swim and bike both
+  // marked Brick, followed by a run, forms one 3-long chain) — grouped so
+  // the whole chain renders as a single connector rather than two separate
+  // ones that would otherwise draw an identical, overlapping segment at
+  // their shared middle card. See the measuring effect below.
+  const brickChains = []
+  {
+    let chain = null
+    for (let i = 0; i < sorted.length; i++) {
+      const cur = sorted[i]
+      const nextW = sorted[i + 1]
+      if (cur.is_brick && nextW?.sport === BRICK_NEXT_SPORT[cur.sport]) {
+        if (!chain) chain = [cur]
+        chain.push(nextW)
+      } else if (chain) {
+        brickChains.push(chain)
+        chain = null
+      }
+    }
+    if (chain) brickChains.push(chain)
+  }
 
   const [draggedId, setDraggedId] = useState(null)
   const [dragOverIndex, setDragOverIndex] = useState(null)
@@ -31,52 +49,68 @@ export default function DayColumn({ date, today, workouts = [], onDayClick, onCa
 
   const bodyRef = useRef(null)
   const titleRowRefs = useRef(new Map()) // workout id -> .workout-card__top DOM node
-  const [connectors, setConnectors] = useState([]) // [{ id, startX, startY, kickX, endX, endY }]
+  const [connectors, setConnectors] = useState([]) // [{ id, d, kickX, dashArray, labels: [{ y }] }]
 
-  const brickPairKey = brickPairs.map(([bike, run]) => `${bike.id}:${run.id}`).join(',')
+  const brickChainKey = brickChains.map(chain => chain.map(w => w.id).join('-')).join(',')
 
   useEffect(() => {
     const bodyEl = bodyRef.current
-    if (!bodyEl || !brickPairKey) { setConnectors([]); return }
+    if (!bodyEl || !brickChainKey) { setConnectors([]); return }
 
     function recompute() {
       const bodyRect = bodyEl.getBoundingClientRect()
-      const next = brickPairs.map(([bike, run]) => {
-        const bikeEl = titleRowRefs.current.get(bike.id)
-        const runEl = titleRowRefs.current.get(run.id)
-        if (!bikeEl || !runEl) return null
-        const bikeRect = bikeEl.getBoundingClientRect()
-        const runRect = runEl.getBoundingClientRect()
-        const startX = bikeRect.right - bodyRect.left
-        const startY = bikeRect.top + bikeRect.height / 2 - bodyRect.top
-        const endX = runRect.right - bodyRect.left
-        const endY = runRect.top + runRect.height / 2 - bodyRect.top
-        // Fixed per day (not derived from either title's width) so every
-        // brick connector's vertical segment lines up along the same rail,
-        // aligned to the right of the cards rather than drifting with
-        // however long each title happens to be.
-        const kickX = bodyRect.width - BRICK_RAIL_INSET
+      // One shared rail for every connector/chain in the day, so they all
+      // stay vertically aligned rather than drifting with title width or
+      // being staggered apart.
+      const kickX = bodyRect.width - BRICK_RAIL_INSET
+
+      const next = brickChains.map(chain => {
+        const rects = chain.map(w => titleRowRefs.current.get(w.id)?.getBoundingClientRect())
+        if (rects.some(r => !r)) return null
+
+        const points = rects.map(r => ({
+          x: r.right - bodyRect.left,
+          y: r.top + r.height / 2 - bodyRect.top,
+        }))
+
+        // Right from the first title to the rail, then for each following
+        // title: down/up the rail to its height, in to touch its title,
+        // and — unless it's the last one in the chain — back out to the
+        // rail to continue toward the next. That "touch and retrace" is
+        // what lets one continuous path visit every intermediate title
+        // exactly once instead of needing a separate overlapping path per
+        // pair.
+        let d = `M ${points[0].x} ${points[0].y} L ${kickX} ${points[0].y}`
+        let totalLength = Math.abs(kickX - points[0].x)
+        for (let i = 1; i < points.length; i++) {
+          d += ` L ${kickX} ${points[i].y} L ${points[i].x} ${points[i].y}`
+          totalLength += Math.abs(points[i].y - points[i - 1].y) + Math.abs(kickX - points[i].x)
+          if (i < points.length - 1) {
+            d += ` L ${kickX} ${points[i].y}`
+            totalLength += Math.abs(kickX - points[i].x)
+          }
+        }
 
         // Fit the dash pattern to this exact path length so it always ends
         // on a complete dash+gap unit — otherwise whatever's left over at
         // the end renders as a visibly truncated partial dash or gap.
-        const totalLength = Math.abs(kickX - startX) + Math.abs(endY - startY) + Math.abs(kickX - endX)
         const unitCount = Math.max(1, Math.round(totalLength / BRICK_DASH_UNIT))
         const unit = totalLength / unitCount
         const dash = unit * BRICK_DASH_FRACTION
         const gap = unit - dash
 
-        // The label sits between the bend (at the bike title's height) and
-        // the bike card's own bottom edge, centered so the gap above it
-        // (down to the bend) matches the gap below it (down to the card's
-        // bottom) — rather than the connector's overall midpoint, which can
-        // land well past the bike card entirely once other cards sit
-        // between the bike and the run.
-        const bikeCardEl = bikeEl.closest('.workout-card')
-        const bikeBottom = bikeCardEl ? bikeCardEl.getBoundingClientRect().bottom - bodyRect.top : endY
-        const labelY = (startY + bikeBottom) / 2
+        // One "BRICK" label per link in the chain, each sitting between
+        // that link's "from" title and its own card's bottom edge — same
+        // as before, just repeated per link instead of just once.
+        const labels = chain.slice(0, -1).map((from, i) => {
+          const fromCardEl = titleRowRefs.current.get(from.id)?.closest('.workout-card')
+          const fromBottom = fromCardEl
+            ? fromCardEl.getBoundingClientRect().bottom - bodyRect.top
+            : points[i + 1].y
+          return { y: (points[i].y + fromBottom) / 2 }
+        })
 
-        return { id: bike.id, startX, startY, kickX, endX, endY, labelY, dashArray: `${dash} ${gap}` }
+        return { id: chain[0].id, d, kickX, dashArray: `${dash} ${gap}`, labels }
       }).filter(Boolean)
       setConnectors(next)
     }
@@ -85,11 +119,11 @@ export default function DayColumn({ date, today, workouts = [], onDayClick, onCa
     const ro = new ResizeObserver(recompute)
     ro.observe(bodyEl)
     return () => ro.disconnect()
-    // Deliberately keyed on brickPairKey (which pair) + workouts (when the
-    // day's data changes) rather than the freshly-recomputed brickPairs
-    // array itself, which would re-run this effect (and its ResizeObserver
-    // churn) on every render even when nothing about the pairs changed.
-  }, [brickPairKey, workouts])
+    // Deliberately keyed on brickChainKey (which chains) + workouts (when
+    // the day's data changes) rather than the freshly-recomputed
+    // brickChains array itself, which would re-run this effect (and its
+    // ResizeObserver churn) on every render even when nothing changed.
+  }, [brickChainKey, workouts])
 
   function handleBodyClick(e) {
     if (e.target.closest('.workout-card')) return
@@ -222,25 +256,24 @@ export default function DayColumn({ date, today, workouts = [], onDayClick, onCa
           <svg className="brick-connector-overlay" aria-hidden="true">
             {connectors.map(c => (
               <g key={c.id}>
-                <path
-                  d={`M ${c.startX} ${c.startY} L ${c.kickX} ${c.startY} L ${c.kickX} ${c.endY} L ${c.endX} ${c.endY}`}
-                  fill="none" stroke="#9ca3af" strokeWidth="1" strokeDasharray={c.dashArray}
-                />
-                {/* Rotated around the label's own along-line position
-                    (c.labelY, not the connector's full midpoint), but
-                    offset to the side of it (via y, which becomes the
-                    sideways direction once rotated) so the label sits
-                    beside the dashes instead of directly on top of them —
-                    on the card-content side of the rail, not the
-                    outer-edge side. */}
-                <text
-                  x={c.kickX} y={c.labelY - BRICK_LABEL_OFFSET}
-                  textAnchor="middle"
-                  fontSize="7" fontWeight="700" fill="#9ca3af"
-                  transform={`rotate(-90, ${c.kickX}, ${c.labelY})`}
-                >
-                  BRICK
-                </text>
+                <path d={c.d} fill="none" stroke="#9ca3af" strokeWidth="1" strokeDasharray={c.dashArray} />
+                {c.labels.map((label, i) => (
+                  // Rotated around the label's own along-line position
+                  // (label.y, not the connector's full span), but offset to
+                  // the side of it (via y, which becomes the sideways
+                  // direction once rotated) so the label sits beside the
+                  // dashes instead of directly on top of them — on the
+                  // card-content side of the rail, not the outer-edge side.
+                  <text
+                    key={i}
+                    x={c.kickX} y={label.y - BRICK_LABEL_OFFSET}
+                    textAnchor="middle"
+                    fontSize="7" fontWeight="700" fill="#9ca3af"
+                    transform={`rotate(-90, ${c.kickX}, ${label.y})`}
+                  >
+                    BRICK
+                  </text>
+                ))}
               </g>
             ))}
           </svg>
