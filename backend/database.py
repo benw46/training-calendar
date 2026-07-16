@@ -30,6 +30,17 @@ SCHEMA_SQL = """
         data_watermark TEXT
     );
 
+    -- Garmin's Garth session (oauth1 + oauth2 tokens), base64-encoded via
+    -- garth.Client.dumps(). Stored here rather than on local disk so a
+    -- cached session survives Render redeploys/spin-downs, which wipe the
+    -- backend's ephemeral filesystem and would otherwise force a fresh
+    -- SSO login on every sync — and Garmin's SSO endpoint rate-limits those.
+    CREATE TABLE IF NOT EXISTS garmin_tokens (
+        id INTEGER PRIMARY KEY CHECK (id = 1),
+        token_data TEXT,
+        updated_at TEXT
+    );
+
     CREATE TABLE IF NOT EXISTS race_bests (
         race_type TEXT PRIMARY KEY,
         race_name TEXT,

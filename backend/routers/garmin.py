@@ -1,7 +1,6 @@
 import logging
 import os
 from datetime import date, datetime, timedelta, timezone
-from pathlib import Path
 
 from fastapi import APIRouter, Depends, HTTPException
 from garminconnect import Garmin
@@ -17,25 +16,55 @@ DEFAULT_LOOKBACK_DAYS = 90
 MAX_LOOKBACK_DAYS = 365
 SYNC_OVERLAP_DAYS = 14
 
+
+def _load_cached_tokens():
+    with get_conn() as conn:
+        row = conn.execute(
+            "SELECT token_data FROM garmin_tokens WHERE id = 1"
+        ).fetchone()
+    return row["token_data"] if row else None
+
+
+def _save_cached_tokens(token_data):
+    with get_conn() as conn:
+        conn.execute(
+            """INSERT INTO garmin_tokens (id, token_data, updated_at) VALUES (1, ?, ?)
+               ON CONFLICT (id) DO UPDATE SET
+                 token_data = EXCLUDED.token_data,
+                 updated_at = EXCLUDED.updated_at""",
+            (token_data, datetime.now(timezone.utc).isoformat()),
+        )
+        conn.commit()
+
+
 # Garmin's SSO login endpoint (sso.garmin.com/mobile/api/login) rate-limits
-# repeated logins fairly aggressively. Session tokens are cached to disk so
-# a sync only hits that endpoint when there's no cached session yet or the
-# cached one has actually expired — every other sync reuses it instead of
-# logging in from scratch.
-TOKEN_DIR = Path(__file__).parent.parent / ".garmin_tokens"
-
-
+# repeated logins fairly aggressively. Session tokens are cached in the
+# database (rather than on local disk, which Render wipes on every redeploy
+# and on spin-down/cold-start) so a sync only hits that endpoint when there's
+# no cached session yet or the cached one has actually expired — every other
+# sync reuses it instead of logging in from scratch.
 def _get_garmin_client(email, password):
     client = Garmin(email, password)
-    try:
-        client.login(tokenstore=str(TOKEN_DIR))
-    except Exception:
-        client.login()
+
+    cached = _load_cached_tokens()
+    if cached:
         try:
-            client.garth.dump(str(TOKEN_DIR))
+            client.garth.loads(cached)
+            # loads() is pure deserialization — nothing has actually confirmed
+            # the token still works, so make one cheap call that would fail
+            # if Garmin has since expired or revoked it.
+            client.display_name = client.garth.profile["displayName"]
+            return client
         except Exception:
-            logger.exception("Failed to cache Garmin session tokens")
+            logger.info("Cached Garmin session invalid or expired; logging in fresh")
+
+    client.login()
+    try:
+        _save_cached_tokens(client.garth.dumps())
+    except Exception:
+        logger.exception("Failed to cache Garmin session tokens")
     return client
+
 
 SPORT_MAP = {
     "running": "run",
