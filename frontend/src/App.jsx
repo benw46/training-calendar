@@ -17,6 +17,64 @@ const MONTH_NAMES = ['January','February','March','April','May','June','July','A
 // component tree mounts) rather than via CSS alone.
 const MOBILE_BREAKPOINT = 700
 
+// The two header divider bars (end of .app-header__controls, start of
+// .app-header__end) are meant to merge into one flush line once
+// .app-header__end has no room left to right-hug into. Relying on the CSS
+// auto-margin to coincidentally land on exactly 0 is too fragile — it's at
+// the mercy of the current event banner text length, the current
+// last-synced string, and .app-header__end's own 200px minmax floor, any
+// of which can leave a several-px sliver that never quite closes. Measuring
+// the real slack and snapping it to 0 below a small threshold guarantees a
+// clean binary "clearly separate" or "fully merged" instead of a state
+// that's neither.
+const HEADER_DIVIDER_SLACK_THRESHOLD = 8
+
+function useHeaderEndSlack(isMobile) {
+  const controlsRef = useRef(null)
+  const endRef = useRef(null)
+  const [hasSlack, setHasSlack] = useState(true)
+
+  useEffect(() => {
+    // The mobile layout doesn't render .app-header__controls/.app-header__end
+    // at all (a separately-structured header, see App()) — those elements
+    // unmount/remount as isMobile flips, so this must re-run then to
+    // re-attach to whichever pair is currently in the DOM rather than only
+    // observing whatever existed on first mount.
+    const controlsEl = controlsRef.current
+    const endEl = endRef.current
+    if (!controlsEl || !endEl) return
+
+    // clientWidth vs scrollWidth doesn't work here: the first child's
+    // margin-left: auto absorbs free space rather than overflowing, so
+    // scrollWidth just tracks clientWidth right back down and never
+    // reveals how much slack there actually was. Summing each child's own
+    // offsetWidth (unaffected by its own margin) plus the flex gaps gives
+    // the box's true content width independent of however much margin is
+    // currently applied — which also keeps this reversible, since it
+    // doesn't get stuck reading "no slack" just because a previous
+    // measurement forced the margin to 0.
+    const recompute = () => {
+      const kids = Array.from(endEl.children)
+      const gap = parseFloat(getComputedStyle(endEl).columnGap) || 0
+      const contentWidth = kids.reduce((sum, k) => sum + k.offsetWidth, 0) + gap * (kids.length - 1)
+      const slack = endEl.clientWidth - contentWidth
+      setHasSlack(slack > HEADER_DIVIDER_SLACK_THRESHOLD)
+    }
+
+    recompute()
+    // Observes both: endEl's own box changes with window/grid resizes,
+    // while controlsEl's box changes with the event banner's cycling text
+    // (its "auto" grid track sizes to content) — either can change how
+    // much slack endEl has left.
+    const observer = new ResizeObserver(recompute)
+    observer.observe(controlsEl)
+    observer.observe(endEl)
+    return () => observer.disconnect()
+  }, [isMobile])
+
+  return { controlsRef, endRef, hasSlack }
+}
+
 function useIsMobile() {
   const [isMobile, setIsMobile] = useState(
     () => typeof window !== 'undefined' && window.innerWidth <= MOBILE_BREAKPOINT
@@ -35,6 +93,7 @@ function useIsMobile() {
 
 export default function App() {
   const isMobile = useIsMobile()
+  const { controlsRef, endRef, hasSlack } = useHeaderEndSlack(isMobile)
 
   // undefined = still checking for an existing session; null = signed out
   const [session, setSession] = useState(undefined)
@@ -141,74 +200,148 @@ export default function App() {
   if (session === undefined) return null
   if (session === null) return <Login />
 
+  // Shared between both header layouts below rather than duplicated —
+  // identical markup/handlers either way, only its position in the header
+  // differs.
+  const monthNav = (
+    <div className="month-nav">
+      <button className="month-nav__btn" onClick={handlePrevMonth} aria-label="Previous month">
+        &lsaquo;
+      </button>
+      <span className="month-nav__label">{monthLabel}</span>
+      <button className="month-nav__btn" onClick={handleNextMonth} aria-label="Next month">
+        &rsaquo;
+      </button>
+    </div>
+  )
+
   return (
     <div className="app">
-      <header className="app-header">
-        <div className="app-header__controls">
-          <button
-            className="app-header__today-btn"
-            onClick={() => scrollToTodayRef.current?.()}
-          >
-            Today
-          </button>
+      {isMobile ? (
+        // A separately-structured header rather than a CSS reflow of the
+        // desktop one below: the desktop layout's two groups
+        // (.app-header__controls / .app-header__end) each wrap as a unit on
+        // narrow screens, which can't produce the specific row-by-row order
+        // requested here (banner, then month nav, then Today+Graphs, then
+        // Sync+Sign out) since that interleaves elements from both groups.
+        <header className="app-header app-header--mobile">
+          <div className="app-header__mobile-banner">
+            <EventBanner lines={eventBannerLines} />
+          </div>
 
-          <div className="month-nav">
-            <button className="month-nav__btn" onClick={handlePrevMonth} aria-label="Previous month">
-              &lsaquo;
+          {monthNav}
+
+          <div className="app-header__mobile-row">
+            <button
+              className="app-header__today-btn"
+              onClick={() => scrollToTodayRef.current?.()}
+            >
+              Today
             </button>
-            <span className="month-nav__label">{monthLabel}</span>
-            <button className="month-nav__btn" onClick={handleNextMonth} aria-label="Next month">
-              &rsaquo;
+            <button
+              className="app-header__graphs-btn"
+              onClick={() => setShowGraphs(true)}
+            >
+              Graphs
             </button>
           </div>
 
-          <EventBanner lines={eventBannerLines} />
-        </div>
+          <div className="app-header__mobile-row">
+            <button
+              className="app-header__sync-btn"
+              onClick={handleGarminSync}
+              disabled={syncing}
+            >
+              {syncing ? 'Syncing…' : 'Sync from Garmin'}
+            </button>
+            <button
+              className="app-header__signout-btn"
+              onClick={() => supabase.auth.signOut()}
+            >
+              Sign out
+            </button>
+          </div>
 
-        <span className="app-header__divider" aria-hidden="true" />
-
-        {/* Deliberately outside .app-header__controls: that container is
-            horizontally scrollable, and ColorLegend's popover would get
-            clipped by that container's overflow if it lived inside it.
-            Grouped together here so Graphs/Sync/Last-synced/Legend/Sign-out
-            always stay on the same line as each other, wrapping as one unit
-            rather than being scattered wherever the nav controls happen to
-            wrap. */}
-        <div className="app-header__end">
-          <button
-            className="app-header__graphs-btn"
-            onClick={() => setShowGraphs(true)}
-          >
-            Graphs
-          </button>
-
-          <button
-            className="app-header__sync-btn"
-            onClick={handleGarminSync}
-            disabled={syncing}
-          >
-            {syncing ? 'Syncing…' : 'Sync from Garmin'}
-          </button>
-
-          <span className="app-header__last-synced">
-            {lastSynced ? (
-              <>
-                <span className="app-header__last-synced-label">Last synced: </span>
-                {formatSyncedAt(lastSynced)}
-              </>
-            ) : 'Not yet synced'}
-          </span>
-
+          {/* Absolutely positioned (see .app-header--mobile .color-legend)
+              into the top-right corner rather than given its own row —
+              there's no row it naturally belongs to, and pinning it out of
+              flow keeps the four action buttons' row widths (and so their
+              matched sizing) unaffected by it. */}
           <ColorLegend />
+        </header>
+      ) : (
+        <header className="app-header">
+          <div className="app-header__controls" ref={controlsRef}>
+            <button
+              className="app-header__today-btn"
+              onClick={() => scrollToTodayRef.current?.()}
+            >
+              Today
+            </button>
 
-          <button
-            className="app-header__signout-btn"
-            onClick={() => supabase.auth.signOut()}
+            {monthNav}
+
+            <EventBanner lines={eventBannerLines} />
+          </div>
+
+          <span className="app-header__divider" aria-hidden="true" />
+
+          {/* Deliberately outside .app-header__controls: that container is
+              horizontally scrollable, and ColorLegend's popover would get
+              clipped by that container's overflow if it lived inside it.
+              Grouped together here so Graphs/Sync/Last-synced/Legend/Sign-out
+              always stay on the same line as each other, wrapping as one unit
+              rather than being scattered wherever the nav controls happen to
+              wrap. */}
+          <div
+            className={`app-header__end${hasSlack ? '' : ' app-header__end--merged'}`}
+            ref={endRef}
           >
-            Sign out
-          </button>
-        </div>
-      </header>
+            {/* Mirrors the divider above: that one hugs the end of
+                .app-header__controls, this one hugs the start of this group
+                (via the :first-child margin-left: auto below). When
+                .app-header__end has slack, the two show as separate bars
+                bracketing the empty space; once useHeaderEndSlack measures
+                that slack dropping below its threshold, --merged forces this
+                bar flush against the other (column-gap between them is 0 —
+                see .app-header CSS) so they read as a single merged line. */}
+            <span className="app-header__divider" aria-hidden="true" />
+
+            <button
+              className="app-header__graphs-btn"
+              onClick={() => setShowGraphs(true)}
+            >
+              Graphs
+            </button>
+
+            <button
+              className="app-header__sync-btn"
+              onClick={handleGarminSync}
+              disabled={syncing}
+            >
+              {syncing ? 'Syncing…' : 'Sync from Garmin'}
+            </button>
+
+            <span className="app-header__last-synced">
+              {lastSynced ? (
+                <>
+                  <span className="app-header__last-synced-label">Last synced: </span>
+                  {formatSyncedAt(lastSynced)}
+                </>
+              ) : 'Not yet synced'}
+            </span>
+
+            <ColorLegend />
+
+            <button
+              className="app-header__signout-btn"
+              onClick={() => supabase.auth.signOut()}
+            >
+              Sign out
+            </button>
+          </div>
+        </header>
+      )}
 
       {syncMsg && <div className="sync-toast">{syncMsg}</div>}
 

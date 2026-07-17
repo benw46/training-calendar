@@ -42,16 +42,26 @@ body {
      neighbors scroll horizontally on their own (overflow-x: auto) and
      would clip anything positioned outside their own box; a column can't
      be clipped by either one's overflow, and naturally stays centered in
-     the gap without any measurement. */
+     the gap without any measurement. There are actually two of these
+     spans in the markup — one glued to the end of .app-header__controls,
+     one glued to the start of .app-header__end (see the comment there) —
+     so that both bracket the flexible gap between them when there's slack.
+     Once useHeaderEndSlack (App.jsx) measures that slack away, it adds
+     .app-header__end--merged, which is what actually pins the second bar
+     flush against the first (column-gap: 0 below just means "flush" is
+     possible — the two bars touching isn't otherwise guaranteed to happen
+     at any particular width, since it depends on the live event banner
+     text and last-synced string, not something a static breakpoint could
+     target). */
   grid-template-columns: auto 1px minmax(200px, 1fr);
-  /* Columns otherwise sit flush against each other — .app-header__controls
-     already has its own internal gap (12px) between Today/month-nav/event
-     banner, but nothing separated the event banner's text from the Graphs
-     button right after it, since that's a different grid column. Halved
-     (from a single 16px gap pre-divider) since it's now on both sides of
-     the 1px divider column, keeping the controls-to-end spacing about the
-     same as before. */
-  column-gap: 8px;
+  /* 0, not a fixed gap: lets the two divider bars (see above) end up
+     perfectly flush once .app-header__end--merged forces its first child's
+     margin back to 0. The 8px of breathing room each bar needs on its
+     *outer* side is added directly on that side instead —
+     .app-header__controls' own padding-right below for the left bar,
+     .app-header__end's existing 8px gap (between its :first-child bar and
+     the Graphs button) for the right one. */
+  column-gap: 0;
   align-items: center;
   padding: 0 16px;
   height: 42px;
@@ -103,6 +113,25 @@ body {
   margin-left: auto;
 }
 
+/* Set by useHeaderEndSlack (App.jsx) once measured slack drops below its
+   threshold — forces the two divider bars flush together instead of
+   leaving whatever few px the auto margin happened to settle on. */
+.app-header__end--merged > :first-child {
+  margin-left: 0;
+}
+
+/* Flush isn't enough on its own — two 1px bars sitting edge-to-edge is
+   still a visibly 2px-wide line, twice the width/shape of every other
+   single divider. Zeroing this one's own width (rather than hiding it
+   outright) leaves the outer divider (.app-header's dedicated 1px grid
+   column) as the only visible bar, while still preserving the flex gap
+   below as breathing room before the Graphs button — gap applies between
+   flex items regardless of one of them being 0-width, unlike display: none
+   which would drop the gap along with the element. */
+.app-header__end--merged > .app-header__divider:first-child {
+  width: 0;
+}
+
 .app-header__end > * {
   flex-shrink: 0;
   white-space: nowrap;
@@ -136,28 +165,14 @@ body {
   transition: transform 0.6s ease;
 }
 
-.app-header__event-banner-dots {
-  display: flex;
-  align-items: center;
-  gap: 5px;
-  flex-shrink: 0;
-}
-
-.app-header__event-banner-dot {
-  width: 6px;
-  height: 6px;
-  border-radius: 50%;
-  background: rgba(255, 255, 255, 0.4);
-  transition: background 0.3s ease;
-}
-
-.app-header__event-banner-dot--active {
-  background: #fff;
-}
-
 .app-header__event-banner-line {
   height: 16px;
   line-height: 16px;
+  /* The strip (column flex, default align-items: stretch) sizes every line
+     to the width of the longest one so the ticker doesn't jump width as it
+     cycles — without this, shorter lines just sit left-aligned inside that
+     shared width instead of centered within it. */
+  text-align: center;
 }
 
 .app-header__controls {
@@ -175,6 +190,10 @@ body {
      one scrollable line the way there is on desktop. */
   overflow-x: auto;
   overflow-y: hidden;
+  /* Space between the event banner and the divider bar right after it —
+     see the column-gap: 0 comment on .app-header for why this can't just
+     be a grid column-gap any more. */
+  padding-right: 8px;
 }
 
 /* ── Month navigator: < June 2026 > ──────────────────────── */
@@ -267,20 +286,19 @@ body {
 }
 
 .app-header__signout-btn {
-  font-size: 12px;
+  font-size: 13px;
   font-weight: 600;
-  color: rgba(255,255,255,0.65);
-  background: transparent;
-  border: 1px solid rgba(255,255,255,0.2);
+  color: rgba(255,255,255,0.9);
+  background: rgba(255,255,255,0.12);
+  border: 1px solid rgba(255,255,255,0.25);
   border-radius: 4px;
-  padding: 4px 10px;
+  padding: 4px 12px;
   cursor: pointer;
-  transition: background 0.15s, color 0.15s;
+  transition: background 0.15s;
 }
 
 .app-header__signout-btn:hover {
-  background: rgba(255,255,255,0.12);
-  color: rgba(255,255,255,0.9);
+  background: rgba(255,255,255,0.2);
 }
 
 .app-header__last-synced {
@@ -289,68 +307,86 @@ body {
   white-space: nowrap;
 }
 
-/* Below this width the app switches to MobileDayView (a single day, not
-   the week grid — matches App.jsx's MOBILE_BREAKPOINT), so there's less
-   reason to keep every control crammed onto one horizontally-scrolling
-   line the way desktop does — wrap onto as many lines as needed instead,
-   trading the scroll for a taller (but fully visible, no-scroll) header. */
-@media (max-width: 700px) {
-  .app-header {
-    display: flex;
-    flex-wrap: wrap;
-    height: auto;
-    padding: 8px 12px;
-    row-gap: 8px;
-  }
+/* Below this width App.jsx renders an entirely different header structure
+   (isMobile, matching MOBILE_BREAKPOINT) rather than reflowing the desktop
+   one above — .app-header__controls/.app-header__end don't exist in the DOM
+   at this width at all, so there's nothing here keyed off a media query;
+   these rules are keyed off .app-header--mobile instead, set directly on the
+   element App.jsx renders for that layout. */
+.app-header--mobile {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 8px;
+  height: auto;
+  padding: 8px 12px;
+  /* Anchors .color-legend's absolute top-right placement below — it has no
+     row of its own, so it's positioned relative to the header as a whole
+     rather than inline in the flow. */
+  position: relative;
+}
 
-  .app-header__controls {
-    flex: 1 1 100%;
-    flex-wrap: wrap;
-    overflow: visible;
-    /* A flex item's automatic minimum size doesn't inherit down through
-       nested flex containers just because a descendant sets its own
-       min-width: 0 — this element is itself a flex item (of .app-header)
-       as well as a flex container (of Today/month-nav/event banner), and
-       needs the override at this level too, or it still won't shrink
-       below its content's width despite the event banner wrap's own fix
-       below. */
-    min-width: 0;
-  }
+.app-header__mobile-banner {
+  display: flex;
+  justify-content: center;
+  /* Matched on both sides (rather than just the right, where the info icon
+     sits) so the reserved space is symmetric — an asymmetric right-only
+     padding would shift the centered text off the banner's true midpoint.
+     Still keeps a long race name clear of the icon pinned top-right
+     (.app-header--mobile .color-legend). */
+  padding: 0 28px;
+  /* Same reasoning as .app-header__mobile-row's min-width: 0 — a long race
+     name is nowrap and would otherwise set this row's min-width to its own
+     content width instead of the stretched container width. */
+  min-width: 0;
+}
 
-  /* .app-header__controls > * sets flex-shrink: 0 (needed on desktop so
-     nothing gets squeezed illegibly before the scroll takes over) — but
-     the event banner's ticker text is white-space: nowrap for its
-     animation, so at flex-shrink: 0 it can't be sized down even once
-     wrapped onto its own line, and a long race name would still overflow
-     the viewport width horizontally. Letting it shrink here just clips the
-     excess (it already has overflow: hidden) instead of pushing the page
-     wider — Today/month-nav don't need the same treatment, their content
-     is short and fixed regardless of viewport width. */
-  .app-header__event-banner-wrap {
-    flex-shrink: 1;
-    min-width: 0;
-  }
+.app-header--mobile .month-nav {
+  justify-content: center;
+  min-width: 0;
+}
 
-  /* Only meaningful as a separator between two independently-scrolling
-     single lines — once both wrap onto their own multi-line blocks
-     instead, there's no single boundary left for it to sit "between". */
-  .app-header__divider {
-    display: none;
-  }
+/* A long race name is nowrap, so without this the wrap's default
+   content-based min-width could push it past .app-header__mobile-banner's
+   (already shrunk) width — clip it instead of letting it overflow the
+   viewport. */
+.app-header--mobile .app-header__event-banner-wrap {
+  min-width: 0;
+  overflow: hidden;
+}
 
-  .app-header__end {
-    flex: 1 1 100%;
-    flex-wrap: wrap;
-    overflow: visible;
-    min-width: 0;
-  }
+.app-header__mobile-row {
+  display: flex;
+  gap: 8px;
+  /* Without this, the row (a flex item of .app-header--mobile's column
+     flex) defaults to a min-width sized to its own content — "Sync from
+     Garmin" at nowrap width — instead of shrinking to the stretched
+     container width, pushing the row's right edge past the viewport. */
+  min-width: 0;
+}
 
-  /* The auto margin (base .app-header__end rule) right-hugs this on a
-     single scrollable line — meaningless once wrapped, and would just
-     misalign the first line of buttons from the rest. */
-  .app-header__end > :first-child {
-    margin-left: 0;
-  }
+/* Today/Graphs/Sync/Sign-out only need to match each other's size in this
+   layout — desktop packs them into one horizontally-scrolling line where
+   uniform width would waste space on the short labels (Today, Graphs). Two
+   buttons per row, each flex: 1 1 0 with both rows the same overall width,
+   so all four end up identically sized without hardcoding a width that
+   would otherwise need to accommodate "Sync from Garmin" specifically. */
+.app-header--mobile .app-header__today-btn,
+.app-header--mobile .app-header__graphs-btn,
+.app-header--mobile .app-header__sync-btn,
+.app-header--mobile .app-header__signout-btn {
+  flex: 1 1 0;
+  min-width: 0;
+  padding: 8px 8px;
+  font-size: 13px;
+  text-align: center;
+  white-space: normal;
+}
+
+.app-header--mobile .color-legend {
+  position: absolute;
+  top: 8px;
+  right: 12px;
 }
 
 .sync-toast {

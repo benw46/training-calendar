@@ -34,17 +34,6 @@ export default function EventBanner({ lines }) {
           ))}
         </span>
       </span>
-
-      {lines.length > 1 && (
-        <span className="app-header__event-banner-dots">
-          {lines.map((_, i) => (
-            <span
-              key={i}
-              className={`app-header__event-banner-dot${i === index ? ' app-header__event-banner-dot--active' : ''}`}
-            />
-          ))}
-        </span>
-      )}
     </span>
   )
 }
