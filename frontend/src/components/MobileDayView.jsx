@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import DayColumn from './DayColumn'
 import SummaryPanel from './SummaryPanel'
 import { addDays, toYMD, isSameDay, getMondayOf } from '../utils/dates'
@@ -19,17 +19,35 @@ export default function MobileDayView({
   const [workoutsByDate, setWorkoutsByDate] = useState({})
   const [error, setError] = useState(null)
 
+  // Each call to load() (prev/next day taps fire one apiece) starts an
+  // independent request, and nothing otherwise stops an older one from
+  // resolving after a newer one — on a slow/flaky mobile connection response
+  // order isn't guaranteed to match request order, so without this a stale
+  // response can land last and silently overwrite fresher data (surfacing as
+  // e.g. the delta badge reverting to "New" and sticking there). Bumping a
+  // counter per call and only committing the response whose count still
+  // matches the latest issued one discards any response that's been
+  // superseded by a more recent load() before it had a chance to resolve.
+  const loadSeqRef = useRef(0)
+
   // SummaryPanel needs the whole selected week's data plus the previous
   // week's (for the delta-vs-last-week comparison), not just the one
   // visible day, so the fetch window covers both weeks.
   const load = useCallback((date) => {
+    const seq = ++loadSeqRef.current
     const monday = getMondayOf(date)
     const start = toYMD(addDays(monday, -7))
     const end = toYMD(addDays(monday, 6))
     api.list(start, end)
       .then(listToByDate)
-      .then(setWorkoutsByDate)
-      .catch(err => setError(err.message))
+      .then(byDate => {
+        if (seq !== loadSeqRef.current) return
+        setWorkoutsByDate(byDate)
+      })
+      .catch(err => {
+        if (seq !== loadSeqRef.current) return
+        setError(err.message)
+      })
   }, [])
 
   useEffect(() => { load(selectedDate) }, [selectedDate, load])
@@ -71,13 +89,15 @@ export default function MobileDayView({
         <button className="mobile-day-nav__btn" onClick={handlePrevDay} aria-label="Previous day">
           &lsaquo;
         </button>
-        <span
-          className={`mobile-day-nav__label${isSameDay(selectedDate, today) ? ' mobile-day-nav__label--today' : ''}`}
-          onClick={() => onDayClick?.(selectedDate)}
-        >
-          {isSameDay(selectedDate, today) ? 'Today' : dateLabel}
-        </span>
-        {hasEvent && <span className="mobile-day-nav__race-day">RACE DAY</span>}
+        <div className="mobile-day-nav__center">
+          <span
+            className={`mobile-day-nav__label${isSameDay(selectedDate, today) ? ' mobile-day-nav__label--today' : ''}`}
+            onClick={() => onDayClick?.(selectedDate)}
+          >
+            {isSameDay(selectedDate, today) ? 'Today' : dateLabel}
+          </span>
+          {hasEvent && <span className="mobile-day-nav__race-day">RACE DAY</span>}
+        </div>
         <button className="mobile-day-nav__btn" onClick={handleNextDay} aria-label="Next day">
           &rsaquo;
         </button>

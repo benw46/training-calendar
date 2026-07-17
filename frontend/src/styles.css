@@ -474,9 +474,24 @@ body {
   background: #eaecf0;
 }
 
-.mobile-day-nav__label {
+/* Wraps the label and the RACE DAY badge together as a column so the badge
+   sits below the date instead of beside it — beside it (as a flex sibling
+   of the label, both inside .mobile-day-nav) ate into the label's flex: 1
+   box from one side only, shifting the date text left of the row's actual
+   center whenever RACE DAY was present. Stacking keeps the date's own
+   horizontal center fixed at the row's center regardless of whether the
+   badge is showing. */
+.mobile-day-nav__center {
   flex: 1;
-  text-align: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  min-width: 0;
+}
+
+.mobile-day-nav__label {
   font-size: 16px;
   font-weight: 700;
   color: #111827;
