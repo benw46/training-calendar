@@ -132,14 +132,16 @@ export default function SummaryPanel({ workoutsByDate, days, today }) {
               <span className="summary-row__planned-value">{fmtDuration(plannedByKey[key])}h</span>
               <span className="summary-row__value">{fmtDuration(actualByKey[key])}h</span>
             </div>
-            {key !== 'total' && (
-              <div className="summary-row__progress">
-                <div
-                  className="summary-row__progress-fill"
-                  style={{ width: `${pct * 100}%`, background: color }}
-                />
-              </div>
-            )}
+            {key === 'total'
+              ? <div className="summary-row--total__divider" />
+              : (
+                <div className="summary-row__progress">
+                  <div
+                    className="summary-row__progress-fill"
+                    style={{ width: `${pct * 100}%`, background: color }}
+                  />
+                </div>
+              )}
           </div>
         )
       })}

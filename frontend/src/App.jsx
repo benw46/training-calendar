@@ -144,11 +144,6 @@ export default function App() {
   return (
     <div className="app">
       <header className="app-header">
-        <span className="app-header__title">
-          <span className="app-header__brand">RaceCondition</span>
-          <span className="app-header__subtitle">The Vibe-Coded Triathlon Calendar</span>
-        </span>
-
         <div className="app-header__controls">
           <button
             className="app-header__today-btn"
@@ -169,6 +164,8 @@ export default function App() {
 
           <EventBanner lines={eventBannerLines} />
         </div>
+
+        <span className="app-header__divider" aria-hidden="true" />
 
         {/* Deliberately outside .app-header__controls: that container is
             horizontally scrollable, and ColorLegend's popover would get
