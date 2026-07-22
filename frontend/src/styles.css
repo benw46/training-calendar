@@ -320,21 +320,21 @@ body {
   gap: 8px;
   height: auto;
   padding: 8px 12px;
-  /* Anchors .color-legend's absolute top-right placement below — it has no
-     row of its own, so it's positioned relative to the header as a whole
-     rather than inline in the flow. */
+  /* Anchors .color-legend-group's absolute top-right placement below — it
+     has no row of its own, so it's positioned relative to the header as a
+     whole rather than inline in the flow. */
   position: relative;
 }
 
 .app-header__mobile-banner {
   display: flex;
   justify-content: center;
-  /* Matched on both sides (rather than just the right, where the info icon
-     sits) so the reserved space is symmetric — an asymmetric right-only
+  /* Matched on both sides (rather than just the right, where the reload/info
+     icons sit) so the reserved space is symmetric — an asymmetric right-only
      padding would shift the centered text off the banner's true midpoint.
-     Still keeps a long race name clear of the icon pinned top-right
-     (.app-header--mobile .color-legend). */
-  padding: 0 28px;
+     Still keeps a long race name clear of the icons pinned top-right
+     (.app-header--mobile .color-legend-group). */
+  padding: 0 46px;
   /* Same reasoning as .app-header__mobile-row's min-width: 0 — a long race
      name is nowrap and would otherwise set this row's min-width to its own
      content width instead of the stretched container width. */
@@ -383,7 +383,7 @@ body {
   white-space: normal;
 }
 
-.app-header--mobile .color-legend {
+.app-header--mobile .color-legend-group {
   position: absolute;
   top: 8px;
   right: 12px;
@@ -1440,6 +1440,35 @@ body {
 
 /* ── Color legend ─────────────────────────────────────────── */
 
+.color-legend-group {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-shrink: 0;
+}
+
+.color-legend-group__reload {
+  background: none;
+  border: none;
+  padding: 0;
+  /* Bigger than .color-legend__icon's 15px: the ↻ glyph sits smaller within
+     its own em box than the circled ⓘ glyph does, so it needs a larger
+     font-size to read as the same visual diameter next to it. Both icons
+     also share the same fixed height/line-height box (below) so their
+     glyphs land on the same vertical center despite the differing
+     font-size, rather than relying on each glyph's own font metrics. */
+  font-size: 19px;
+  height: 20px;
+  line-height: 20px;
+  display: inline-block;
+  color: rgba(255, 255, 255, 0.75);
+  cursor: pointer;
+}
+
+.color-legend-group__reload:hover {
+  color: #fff;
+}
+
 .color-legend {
   display: flex;
   align-items: center;
@@ -1448,6 +1477,9 @@ body {
 
 .color-legend__icon {
   font-size: 15px;
+  height: 20px;
+  line-height: 20px;
+  display: inline-block;
   color: rgba(255, 255, 255, 0.75);
   cursor: default;
 }

@@ -46,17 +46,27 @@ export default function ColorLegend() {
   }
 
   return (
-    <div
-      className="color-legend"
-      tabIndex={0}
-      ref={triggerRef}
-      onMouseEnter={open}
-      onMouseLeave={scheduleClose}
-      onFocus={open}
-      onBlur={scheduleClose}
-    >
-      <span className="color-legend__icon" aria-label="Workout color legend">ⓘ</span>
-      {pos && createPortal(
+    <div className="color-legend-group">
+      <button
+        type="button"
+        className="color-legend-group__reload"
+        aria-label="Reload page"
+        title="Reload page"
+        onClick={() => window.location.reload()}
+      >
+        ↻
+      </button>
+      <div
+        className="color-legend"
+        tabIndex={0}
+        ref={triggerRef}
+        onMouseEnter={open}
+        onMouseLeave={scheduleClose}
+        onFocus={open}
+        onBlur={scheduleClose}
+      >
+        <span className="color-legend__icon" aria-label="Workout color legend">ⓘ</span>
+        {pos && createPortal(
         <div
           className="color-legend__popover"
           style={{ top: pos.top, left: pos.left, width: pos.width }}
@@ -92,6 +102,7 @@ export default function ColorLegend() {
         </div>,
         document.body
       )}
+      </div>
     </div>
   )
 }
