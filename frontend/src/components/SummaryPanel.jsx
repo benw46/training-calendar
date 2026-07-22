@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { toYMD, addDays, getMondayOf } from '../utils/dates'
 import { SPORT_COLORS, fmtDuration, sortDayWorkouts } from '../utils/workouts'
 import {
@@ -67,6 +67,14 @@ export default function SummaryPanel({ workoutsByDate, days, today, onReordered 
   const [deleteState, setDeleteState] = useState('idle') // 'idle' | 'deleting' | 'error'
   const [deleteMsg, setDeleteMsg]     = useState(null)
   const [actionsOpen, setActionsOpen] = useState(false)
+  const [confirmingDelete, setConfirmingDelete] = useState(false)
+
+  useEffect(() => {
+    if (!confirmingDelete) return
+    function onKey(e) { if (e.key === 'Escape') setConfirmingDelete(false) }
+    document.addEventListener('keydown', onKey)
+    return () => document.removeEventListener('keydown', onKey)
+  }, [confirmingDelete])
 
   const workouts = days.flatMap(d => workoutsByDate[toYMD(d)] ?? [])
   const physicalWorkouts = workouts.filter(w => PHYSICAL_SPORTS.has(w.sport))
@@ -122,9 +130,13 @@ export default function SummaryPanel({ workoutsByDate, days, today, onReordered 
     setTimeout(() => { setCopyState('idle'); setCopyMsg(null) }, 4000)
   }
 
-  async function handleDeleteWeek() {
+  function handleDeleteWeek() {
     if (physicalWorkouts.length === 0 || deleteState === 'deleting') return
+    setConfirmingDelete(true)
+  }
 
+  async function confirmDeleteWeek() {
+    setConfirmingDelete(false)
     setDeleteState('deleting')
     setDeleteMsg(null)
 
@@ -281,6 +293,32 @@ export default function SummaryPanel({ workoutsByDate, days, today, onReordered 
           </div>
         )
       })}
+      {confirmingDelete && (
+        <div className="modal-backdrop" onClick={e => { if (e.target === e.currentTarget) setConfirmingDelete(false) }}>
+          <div className="modal modal--confirm" role="alertdialog" aria-modal="true">
+            <div className="modal-header">
+              <h2 className="modal-title">Delete Week</h2>
+              <button className="modal-close" onClick={() => setConfirmingDelete(false)} aria-label="Close">✕</button>
+            </div>
+            <div className="modal-confirm-body">
+              <p>
+                Delete all {physicalWorkouts.length} activit{physicalWorkouts.length === 1 ? 'y' : 'ies'} in this week?
+                This can't be undone.
+              </p>
+              <div className="modal-actions">
+                <div className="modal-actions__right">
+                  <button type="button" className="btn btn--secondary" onClick={() => setConfirmingDelete(false)}>
+                    Cancel
+                  </button>
+                  <button type="button" className="btn btn--danger" onClick={confirmDeleteWeek}>
+                    Delete Week
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

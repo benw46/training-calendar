@@ -1211,6 +1211,20 @@ body {
   width: 1600px;
 }
 
+.modal--confirm {
+  width: 360px;
+}
+
+.modal-confirm-body {
+  padding: 16px 20px 20px;
+}
+
+.modal-confirm-body p {
+  font-size: 14px;
+  color: #374151;
+  line-height: 1.5;
+}
+
 .graph-body {
   padding: 16px 20px 20px;
 }
