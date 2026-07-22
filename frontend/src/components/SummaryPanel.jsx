@@ -1,10 +1,12 @@
+import { useState } from 'react'
 import { toYMD, addDays, getMondayOf } from '../utils/dates'
-import { SPORT_COLORS, fmtDuration } from '../utils/workouts'
+import { SPORT_COLORS, fmtDuration, sortDayWorkouts } from '../utils/workouts'
 import {
   weekActualTotal, weekPlannedTotal,
   weekActualTotalsBySport, weekPlannedTotalsBySport,
   computeDelta,
 } from '../utils/weeklyTotals'
+import { api } from '../api/workouts'
 
 const ROWS = [
   { key: 'total', label: 'Total', color: '#374151' },
@@ -16,6 +18,11 @@ const ROWS = [
 ]
 
 const SPORT_ROWS = ROWS.filter(r => r.key !== 'total')
+
+// Copy Week / Delete Week only touch physical training activities — Note,
+// Event, and Period cards are markers/annotations rather than something to
+// duplicate or bulk-delete a week's worth of.
+const PHYSICAL_SPORTS = new Set(['swim', 'bike', 'run', 'strength', 'other'])
 
 function deltaText(delta) {
   if (delta.kind === 'new')  return 'New'
@@ -54,8 +61,86 @@ function DeltaBadge({ delta, sportDeltas, explanation }) {
   )
 }
 
-export default function SummaryPanel({ workoutsByDate, days, today }) {
+export default function SummaryPanel({ workoutsByDate, days, today, onReordered }) {
+  const [copyState, setCopyState] = useState('idle') // 'idle' | 'copying' | 'done' | 'error'
+  const [copyMsg, setCopyMsg]     = useState(null)
+  const [deleteState, setDeleteState] = useState('idle') // 'idle' | 'deleting' | 'error'
+  const [deleteMsg, setDeleteMsg]     = useState(null)
+  const [actionsOpen, setActionsOpen] = useState(false)
+
   const workouts = days.flatMap(d => workoutsByDate[toYMD(d)] ?? [])
+  const physicalWorkouts = workouts.filter(w => PHYSICAL_SPORTS.has(w.sport))
+
+  // Duplicates every card in the visible week onto the same weekday next
+  // week — the plan, not the outcome: actual_duration/distance and the
+  // Garmin link are deliberately left off since next week hasn't happened
+  // yet and copying "what happened" onto an unrun day would be misleading.
+  async function handleCopyWeek() {
+    if (physicalWorkouts.length === 0 || copyState === 'copying') return
+    setCopyState('copying')
+    setCopyMsg(null)
+
+    // Each day's cards are copied in on-screen order (not raw API/id order,
+    // which can trail behind a drag-reorder) and created one at a time
+    // rather than in parallel — the new day starts with every sort_order
+    // null, so its display order falls back to insertion order (see
+    // sortDayWorkouts), and concurrent requests would let the server
+    // assign ids in whatever order they happened to land, silently
+    // reshuffling the copy (breaking brick pairs, which are inferred from
+    // adjacency, not stored links). Event/Period/Note cards are filtered out
+    // after sorting so remaining physical cards keep their relative order.
+    const ordered = days
+      .flatMap(d => sortDayWorkouts(workoutsByDate[toYMD(d)] ?? []))
+      .filter(w => PHYSICAL_SPORTS.has(w.sport))
+    let failed = 0
+    for (const w of ordered) {
+      try {
+        await api.create({
+          date: toYMD(addDays(new Date(w.date + 'T00:00:00'), 7)),
+          sport: w.sport,
+          name: w.name,
+          planned_duration_minutes: w.planned_duration_minutes,
+          planned_distance_km: w.planned_distance_km,
+          description: w.description,
+          is_brick: w.is_brick,
+          gym_exercises: w.gym_exercises,
+        })
+      } catch {
+        failed += 1
+      }
+    }
+
+    if (failed < ordered.length) onReordered?.()
+
+    if (failed > 0) {
+      setCopyState('error')
+      setCopyMsg(`${failed} of ${ordered.length} didn't copy`)
+    } else {
+      setCopyState('done')
+      setCopyMsg('Copied!')
+    }
+    setTimeout(() => { setCopyState('idle'); setCopyMsg(null) }, 4000)
+  }
+
+  async function handleDeleteWeek() {
+    if (physicalWorkouts.length === 0 || deleteState === 'deleting') return
+
+    setDeleteState('deleting')
+    setDeleteMsg(null)
+
+    const results = await Promise.allSettled(physicalWorkouts.map(w => api.delete(w.id)))
+    const failed = results.filter(r => r.status === 'rejected')
+
+    if (failed.length < physicalWorkouts.length) onReordered?.()
+
+    if (failed.length > 0) {
+      setDeleteState('error')
+      setDeleteMsg(`${failed.length} of ${physicalWorkouts.length} didn't delete`)
+      setTimeout(() => { setDeleteState('idle'); setDeleteMsg(null) }, 4000)
+    } else {
+      setDeleteState('idle')
+    }
+  }
 
   const actualByKey  = { total: 0, swim: 0, bike: 0, run: 0, gym: 0, other: 0 }
   const plannedByKey = { total: 0, swim: 0, bike: 0, run: 0, gym: 0, other: 0 }
@@ -119,6 +204,44 @@ export default function SummaryPanel({ workoutsByDate, days, today }) {
           <div key={key} className="summary-row-group">
             {key === 'total' && (
               <div className="summary-delta-bar">
+                <div className="summary-week-actions">
+                  <button
+                    type="button"
+                    className="summary-week-actions-toggle"
+                    onClick={() => setActionsOpen(v => !v)}
+                    aria-expanded={actionsOpen}
+                    aria-label={actionsOpen ? 'Hide week actions' : 'Show week actions'}
+                    title={actionsOpen ? 'Hide week actions' : 'Show week actions'}
+                  >
+                    <svg viewBox="0 0 16 4" width="16" height="4" aria-hidden="true">
+                      <circle cx="2" cy="2" r="1.6" fill="currentColor" />
+                      <circle cx="8" cy="2" r="1.6" fill="currentColor" />
+                      <circle cx="14" cy="2" r="1.6" fill="currentColor" />
+                    </svg>
+                  </button>
+                  {actionsOpen && (
+                    <>
+                      <button
+                        type="button"
+                        className="summary-copy-week-btn"
+                        onClick={handleCopyWeek}
+                        disabled={copyState === 'copying' || physicalWorkouts.length === 0}
+                        title="Copy this week's activities to the same days next week"
+                      >
+                        {copyState === 'copying' ? 'Copying…' : 'Copy Week'}
+                      </button>
+                      <button
+                        type="button"
+                        className="summary-delete-week-btn"
+                        onClick={handleDeleteWeek}
+                        disabled={deleteState === 'deleting' || physicalWorkouts.length === 0}
+                        title="Delete all activities in this week"
+                      >
+                        {deleteState === 'deleting' ? 'Deleting…' : 'Delete Week'}
+                      </button>
+                    </>
+                  )}
+                </div>
                 <div className="summary-delta-row">
                   <span className="summary-delta-bar__label">{deltaLabel}</span>
                   <DeltaBadge
@@ -127,6 +250,16 @@ export default function SummaryPanel({ workoutsByDate, days, today }) {
                     explanation={deltaExplanation}
                   />
                 </div>
+                {copyMsg && (
+                  <span className={`summary-week-action-msg summary-week-action-msg--${copyState}`}>
+                    {copyMsg}
+                  </span>
+                )}
+                {deleteMsg && (
+                  <span className={`summary-week-action-msg summary-week-action-msg--${deleteState}`}>
+                    {deleteMsg}
+                  </span>
+                )}
               </div>
             )}
             <div className={`summary-row${key === 'total' ? ' summary-row--total' : ''}`}>

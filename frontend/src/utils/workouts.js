@@ -60,7 +60,7 @@ export function fmtDistance(km) {
 }
 
 export function fmtExercise(ex) {
-  const setsReps = ex.sets != null && ex.reps != null ? `${ex.sets}×${ex.reps}` : null
+  const setsReps = ex.sets && ex.reps ? `${ex.sets}×${ex.reps}` : null
   const load = ex.bodyweight ? 'bodyweight' : (ex.weight != null ? `${ex.weight}kg` : null)
   const detail = [setsReps, load].filter(Boolean).join(' · ')
   return detail ? `${ex.name} — ${detail}` : ex.name

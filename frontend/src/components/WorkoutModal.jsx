@@ -122,6 +122,7 @@ export default function WorkoutModal({ workout, initialDate, onClose, onSaved, o
   const [deleting, setDeleting] = useState(false)
   const [copying, setCopying] = useState(false)
   const [submitError, setSubmitError] = useState(null)
+  const [draggedExerciseIndex, setDraggedExerciseIndex] = useState(null)
 
   const isNote = form.sport === 'note'
   const isEvent = form.sport === 'event'
@@ -192,6 +193,40 @@ export default function WorkoutModal({ workout, initialDate, onClose, onSaved, o
 
   function removeExercise(index) {
     setForm(f => ({ ...f, gym_exercises: f.gym_exercises.filter((_, i) => i !== index) }))
+  }
+
+  // Drag handle only (not the whole row) is draggable — the row itself is
+  // full of text inputs, and marking it draggable too would fight with
+  // clicking/selecting text inside them.
+  function handleExerciseDragStart(e, index) {
+    e.dataTransfer.effectAllowed = 'move'
+    e.dataTransfer.setData('text/plain', String(index))
+    setDraggedExerciseIndex(index)
+  }
+
+  // Reorders live as the drag passes over another row — rather than just
+  // marking a drop target and waiting for the drop to move anything, the
+  // dragged exercise swaps into whatever row it's currently over right
+  // away, and every row between its old and new spot shifts to make room,
+  // so the list itself visibly makes way for it as it moves.
+  function handleExerciseDragOver(e, index) {
+    e.preventDefault() // required to allow a drop
+    if (draggedExerciseIndex === null || draggedExerciseIndex === index) return
+    setForm(f => {
+      const rows = [...f.gym_exercises]
+      const [moved] = rows.splice(draggedExerciseIndex, 1)
+      rows.splice(index, 0, moved)
+      return { ...f, gym_exercises: rows }
+    })
+    setDraggedExerciseIndex(index)
+  }
+
+  function handleExerciseDrop(e) {
+    e.preventDefault() // the reorder already happened live in dragover — this just accepts the drop
+  }
+
+  function handleExerciseDragEnd() {
+    setDraggedExerciseIndex(null)
   }
 
   function validateDuration(str) {
@@ -457,6 +492,7 @@ export default function WorkoutModal({ workout, initialDate, onClose, onSaved, o
                   <table className="gym-exercises__table">
                     <thead>
                       <tr>
+                        <th></th>
                         <th>Activity</th>
                         <th>Sets</th>
                         <th>Reps</th>
@@ -467,7 +503,31 @@ export default function WorkoutModal({ workout, initialDate, onClose, onSaved, o
                     </thead>
                     <tbody>
                       {form.gym_exercises.map((ex, i) => (
-                        <tr key={i}>
+                        <tr
+                          key={i}
+                          className={draggedExerciseIndex === i ? 'gym-exercises__row--dragging' : ''}
+                          onDragOver={e => handleExerciseDragOver(e, i)}
+                          onDrop={handleExerciseDrop}
+                        >
+                          <td className="gym-exercises__td--center">
+                            <span
+                              className="gym-exercises__drag-handle"
+                              draggable
+                              onDragStart={e => handleExerciseDragStart(e, i)}
+                              onDragEnd={handleExerciseDragEnd}
+                              aria-label="Drag to reorder"
+                              title="Drag to reorder"
+                            >
+                              <svg viewBox="0 0 10 16" width="10" height="16" aria-hidden="true">
+                                <circle cx="3" cy="3" r="1.3" fill="currentColor" />
+                                <circle cx="7" cy="3" r="1.3" fill="currentColor" />
+                                <circle cx="3" cy="8" r="1.3" fill="currentColor" />
+                                <circle cx="7" cy="8" r="1.3" fill="currentColor" />
+                                <circle cx="3" cy="13" r="1.3" fill="currentColor" />
+                                <circle cx="7" cy="13" r="1.3" fill="currentColor" />
+                              </svg>
+                            </span>
+                          </td>
                           <td>
                             <textarea
                               rows={1}

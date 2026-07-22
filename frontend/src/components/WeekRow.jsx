@@ -21,7 +21,7 @@ export default function WeekRow({ monday, today, workoutsByDate = {}, onDayClick
           />
         )
       })}
-      <SummaryPanel workoutsByDate={workoutsByDate} days={days} today={today} />
+      <SummaryPanel workoutsByDate={workoutsByDate} days={days} today={today} onReordered={onReordered} />
     </div>
   )
 }

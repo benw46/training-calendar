@@ -54,7 +54,29 @@ export default function ColorLegend() {
         title="Reload page"
         onClick={() => window.location.reload()}
       >
-        ↻
+        {/* Arc traces the same r=8 circle as .color-legend__icon's ⓘ below,
+            so the two read as the same diameter instead of relying on
+            matching font metrics across two different glyphs. */}
+        <svg viewBox="0 0 20 20" width="20" height="20" aria-hidden="true">
+          <path
+            d="M 15.14 3.87 A 8 8 0 1 1 4.86 3.87"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="1.6"
+            strokeLinecap="round"
+          />
+          {/* Open chevron, same stroke weight as the arc, so the
+              arrowhead reads as a continuation of the line rather than
+              a separate filled shape sitting on top of it. */}
+          <path
+            d="M 5.20 5.65 L 6.25 3.07 L 3.49 2.70"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="1.6"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          />
+        </svg>
       </button>
       <div
         className="color-legend"
@@ -65,7 +87,13 @@ export default function ColorLegend() {
         onFocus={open}
         onBlur={scheduleClose}
       >
-        <span className="color-legend__icon" aria-label="Workout color legend">ⓘ</span>
+        <span className="color-legend__icon" aria-label="Workout color legend">
+          <svg viewBox="0 0 20 20" width="20" height="20" aria-hidden="true">
+            <circle cx="10" cy="10" r="8" fill="none" stroke="currentColor" strokeWidth="1.6" />
+            <circle cx="10" cy="6.3" r="1" fill="currentColor" />
+            <line x1="10" y1="9.2" x2="10" y2="14.3" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
+          </svg>
+        </span>
         {pos && createPortal(
         <div
           className="color-legend__popover"

@@ -875,6 +875,12 @@ body {
    of this grid, the same technique .workout-card__stats uses to line up
    actual/planned. */
 .summary-panel {
+  /* Containing block for .summary-copy-week-btn's top:0/left:0 — anchoring
+     to this rather than to .summary-delta-bar means the button stays
+     pinned to this box's actual top-left corner even when align-content:
+     center (below) shifts the row content down to vertically center it in
+     a row taller than its own content. */
+  position: relative;
   background: #fff;
   padding: 10px 14px;
   border-left: 1px solid #dde0e6;
@@ -1003,6 +1009,10 @@ body {
   display: flex;
   flex-direction: column;
   align-items: center;
+  /* .summary-copy-week-btn is pinned to .summary-panel's own top-left
+     corner (not this box), clearing roughly its bottom edge — this pushes
+     the delta row down far enough that it doesn't render up underneath it. */
+  padding-top: 14px;
   gap: 3px;
   margin-bottom: 10px;
 }
@@ -1016,6 +1026,97 @@ body {
 .summary-delta-bar__label {
   font-size: 11px;
   color: #9ca3af;
+}
+
+.summary-week-actions {
+  position: absolute;
+  /* Relative to .summary-panel (its containing block — see position:
+     relative there). Offsets for an absolutely positioned element are
+     measured from the *padding edge* of its containing block, so left:0
+     would sit flush against .summary-panel's border — 14px left of where
+     its padding-left actually starts the grid content (and so the dot
+     column). .summary-row__dot is 7px wide starting there, centered at
+     14+3.5=17.5px; .summary-week-actions-toggle is 18px wide, so centering
+     its box on that same point (17.5 - 18/2) puts this at 8.5px, lining
+     its icon's own center up with the dots' in the columns below it. The
+     3px top nudge lines this row's text up with the day-of-month numeral
+     in .day-header__primary next to it, whose own text sits a few px down
+     from its box's true top edge. */
+  top: 3px;
+  left: 8.5px;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.summary-week-actions-toggle {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  padding: 0;
+  border: none;
+  border-radius: 4px;
+  background: none;
+  color: #b0b5c0;
+  cursor: pointer;
+  transition: background 0.12s, color 0.12s;
+}
+
+.summary-week-actions-toggle:hover {
+  background: #f3f4f6;
+  color: #6b7280;
+}
+
+.summary-copy-week-btn,
+.summary-delete-week-btn {
+  font-size: 10px;
+  font-weight: 600;
+  border-radius: 4px;
+  padding: 2px 8px;
+  cursor: pointer;
+  transition: background 0.12s, opacity 0.12s;
+}
+
+.summary-copy-week-btn {
+  color: #374151;
+  background: #f3f4f6;
+  border: 1px solid #d1d5db;
+}
+
+.summary-copy-week-btn:hover:not(:disabled) {
+  background: #e5e7eb;
+}
+
+.summary-delete-week-btn {
+  color: #dc2626;
+  background: transparent;
+  border: 1px solid #fca5a5;
+}
+
+.summary-delete-week-btn:hover:not(:disabled) {
+  background: #fef2f2;
+  border-color: #dc2626;
+}
+
+.summary-copy-week-btn:disabled,
+.summary-delete-week-btn:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.summary-week-action-msg {
+  font-size: 10px;
+  text-align: center;
+}
+
+.summary-week-action-msg--error {
+  color: #dc2626;
+}
+
+.summary-week-action-msg--done {
+  color: #16a34a;
 }
 
 .summary-delta {
@@ -1451,16 +1552,15 @@ body {
   background: none;
   border: none;
   padding: 0;
-  /* Bigger than .color-legend__icon's 15px: the ↻ glyph sits smaller within
-     its own em box than the circled ⓘ glyph does, so it needs a larger
-     font-size to read as the same visual diameter next to it. Both icons
-     also share the same fixed height/line-height box (below) so their
-     glyphs land on the same vertical center despite the differing
-     font-size, rather than relying on each glyph's own font metrics. */
-  font-size: 19px;
+  /* Both icons are 20x20 SVGs drawing the same r=8 circle (see
+     ColorLegend.jsx), so this and .color-legend__icon share this fixed
+     box and centering instead of relying on font-glyph metrics to land
+     on the same diameter/vertical center. */
+  width: 20px;
   height: 20px;
-  line-height: 20px;
-  display: inline-block;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   color: rgba(255, 255, 255, 0.75);
   cursor: pointer;
 }
@@ -1476,10 +1576,11 @@ body {
 }
 
 .color-legend__icon {
-  font-size: 15px;
+  width: 20px;
   height: 20px;
-  line-height: 20px;
-  display: inline-block;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   color: rgba(255, 255, 255, 0.75);
   cursor: default;
 }
@@ -1690,6 +1791,31 @@ body {
   align-self: flex-start;
   padding: 5px 12px;
   font-size: 12px;
+}
+
+.gym-exercises__drag-handle {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: #b0b5c0;
+  cursor: grab;
+  padding: 6px 2px;
+}
+
+.gym-exercises__drag-handle:hover {
+  color: #6b7280;
+}
+
+.gym-exercises__drag-handle:active {
+  cursor: grabbing;
+}
+
+/* Reads as "lifted off the table" while it's being dragged — background
+   + shadow on every cell (not the row) since box-shadow/z-index on a
+   <tr> isn't reliably rendered across browsers under border-collapse. */
+.gym-exercises__row--dragging td {
+  background: #eef2ff;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.12);
 }
 
 /* ── Modal actions ────────────────────────────────────────── */

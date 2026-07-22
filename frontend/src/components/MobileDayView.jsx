@@ -117,7 +117,7 @@ export default function MobileDayView({
         />
 
         <div className="mobile-summary-panel">
-          <SummaryPanel workoutsByDate={workoutsByDate} days={weekDays} today={today} />
+          <SummaryPanel workoutsByDate={workoutsByDate} days={weekDays} today={today} onReordered={handleReordered} />
         </div>
       </div>
     </div>
