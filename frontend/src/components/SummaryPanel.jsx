@@ -11,6 +11,7 @@ const ROWS = [
   { key: 'swim',  label: 'Swim',  color: SPORT_COLORS.swim },
   { key: 'bike',  label: 'Bike',  color: SPORT_COLORS.bike },
   { key: 'run',   label: 'Run',   color: SPORT_COLORS.run },
+  { key: 'gym',   label: 'Gym',   color: SPORT_COLORS.strength },
   { key: 'other', label: 'Other', color: SPORT_COLORS.other },
 ]
 
@@ -56,15 +57,17 @@ function DeltaBadge({ delta, sportDeltas, explanation }) {
 export default function SummaryPanel({ workoutsByDate, days, today }) {
   const workouts = days.flatMap(d => workoutsByDate[toYMD(d)] ?? [])
 
-  const actualByKey  = { total: 0, swim: 0, bike: 0, run: 0, other: 0 }
-  const plannedByKey = { total: 0, swim: 0, bike: 0, run: 0, other: 0 }
+  const actualByKey  = { total: 0, swim: 0, bike: 0, run: 0, gym: 0, other: 0 }
+  const plannedByKey = { total: 0, swim: 0, bike: 0, run: 0, gym: 0, other: 0 }
   for (const w of workouts) {
     const actual  = w.actual_duration_minutes ?? 0
     const planned = w.planned_duration_minutes ?? 0
     actualByKey.total  += actual
     plannedByKey.total += planned
 
-    const bucket = w.sport === 'swim' || w.sport === 'bike' || w.sport === 'run' ? w.sport : 'other'
+    const bucket = w.sport === 'swim' || w.sport === 'bike' || w.sport === 'run'
+      ? w.sport
+      : w.sport === 'strength' ? 'gym' : 'other'
     actualByKey[bucket]  += actual
     plannedByKey[bucket] += planned
   }

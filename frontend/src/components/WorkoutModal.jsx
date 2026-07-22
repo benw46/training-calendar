@@ -3,8 +3,13 @@ import { api } from '../api/workouts'
 import { addWeeks, toYMD } from '../utils/dates'
 
 const SPORTS = ['swim', 'bike', 'run', 'strength', 'other', 'note', 'event', 'period']
+// 'strength' is the sport's stable internal/DB value; "Gym" is only how it's
+// labeled in the UI, so every other sport still falls back to a
+// capitalized version of its own value.
+const SPORT_LABELS = { strength: 'Gym' }
 const MAX_DURATION_MINUTES = 100 * 60
 const MAX_DISTANCE_KM = 500
+const EMPTY_EXERCISE = { name: '', sets: '', reps: '', weight: '', bodyweight: false }
 
 function parseDuration(str) {
   if (!str || !str.trim()) return null
@@ -52,6 +57,17 @@ function toDateInputValue(date) {
   return `${y}-${m}-${d}`
 }
 
+function initExercises(gymExercises) {
+  if (!gymExercises || !gymExercises.length) return []
+  return gymExercises.map(ex => ({
+    name:       ex.name ?? '',
+    sets:       ex.sets ?? '',
+    reps:       ex.reps ?? '',
+    weight:     ex.weight ?? '',
+    bodyweight: ex.bodyweight ?? false,
+  }))
+}
+
 function initForm(workout, initialDate) {
   if (workout) {
     return {
@@ -65,6 +81,7 @@ function initForm(workout, initialDate) {
       actual_distance:    workout.actual_distance_km ?? '',
       period_plan:        'build-3',
       is_brick:           workout.is_brick ?? false,
+      gym_exercises:      initExercises(workout.gym_exercises),
     }
   }
   return {
@@ -78,7 +95,23 @@ function initForm(workout, initialDate) {
     actual_distance:  '',
     period_plan:      'build-3',
     is_brick:         false,
+    gym_exercises:    [],
   }
+}
+
+// Drops rows the user never filled in at all, and coerces sets/reps/weight
+// to numbers (or null) for the API. Weight is meaningless (and cleared in
+// the UI) once Bodyweight is checked, so it's forced to null here too.
+function buildGymExercises(rows) {
+  return rows
+    .filter(ex => ex.name.trim() || ex.sets !== '' || ex.reps !== '' || ex.weight !== '' || ex.bodyweight)
+    .map(ex => ({
+      name:       ex.name.trim(),
+      sets:       ex.sets !== '' ? parseInt(ex.sets, 10) : null,
+      reps:       ex.reps !== '' ? parseInt(ex.reps, 10) : null,
+      weight:     !ex.bodyweight && ex.weight !== '' ? parseInt(ex.weight, 10) : null,
+      bodyweight: ex.bodyweight,
+    }))
 }
 
 export default function WorkoutModal({ workout, initialDate, onClose, onSaved, onDeleted }) {
@@ -87,6 +120,7 @@ export default function WorkoutModal({ workout, initialDate, onClose, onSaved, o
   const [errors, setErrors] = useState({})
   const [saving, setSaving] = useState(false)
   const [deleting, setDeleting] = useState(false)
+  const [copying, setCopying] = useState(false)
   const [submitError, setSubmitError] = useState(null)
 
   const isNote = form.sport === 'note'
@@ -116,6 +150,48 @@ export default function WorkoutModal({ workout, initialDate, onClose, onSaved, o
   function set(field, value) {
     setForm(f => ({ ...f, [field]: value }))
     setErrors(e => ({ ...e, [field]: null }))
+  }
+
+  function addExercise() {
+    setForm(f => ({ ...f, gym_exercises: [...f.gym_exercises, { ...EMPTY_EXERCISE }] }))
+  }
+
+  function setExercise(index, field, value) {
+    setForm(f => {
+      const rows = [...f.gym_exercises]
+      rows[index] = { ...rows[index], [field]: value }
+      return { ...f, gym_exercises: rows }
+    })
+  }
+
+  // Weight is digits-only, capped at 3 of them (so max 999kg) — stripped
+  // here rather than relying on <input type="number">, whose built-in
+  // filtering still lets through things like "e" (scientific notation).
+  function setExerciseWeight(index, value) {
+    setExercise(index, 'weight', value.replace(/\D/g, '').slice(0, 3))
+  }
+
+  // Grows the Activity textarea to fit its wrapped content, so long
+  // exercise names wrap instead of scrolling, without affecting the
+  // fixed-width sets/reps/weight columns in the same row.
+  function autoResizeTextarea(el) {
+    if (!el) return
+    el.style.height = 'auto'
+    el.style.height = `${el.scrollHeight}px`
+  }
+
+  // Bodyweight and a numeric added weight are mutually exclusive, so
+  // checking the box clears whatever was typed in the weight field.
+  function toggleExerciseBodyweight(index, checked) {
+    setForm(f => {
+      const rows = [...f.gym_exercises]
+      rows[index] = { ...rows[index], bodyweight: checked, weight: checked ? '' : rows[index].weight }
+      return { ...f, gym_exercises: rows }
+    })
+  }
+
+  function removeExercise(index) {
+    setForm(f => ({ ...f, gym_exercises: f.gym_exercises.filter((_, i) => i !== index) }))
   }
 
   function validateDuration(str) {
@@ -228,6 +304,7 @@ export default function WorkoutModal({ workout, initialDate, onClose, onSaved, o
       actual_duration_minutes:  isNoteLike ? null : parseDuration(values.actual_duration),
       actual_distance_km:      isNoteLike || isStrength ? null : (values.actual_distance !== '' ? parseFloat(values.actual_distance) : null),
       is_brick:                isBrickable ? values.is_brick : false,
+      gym_exercises:            isStrength ? buildGymExercises(values.gym_exercises) : null,
     }
 
     setSaving(true)
@@ -240,6 +317,44 @@ export default function WorkoutModal({ workout, initialDate, onClose, onSaved, o
       setSubmitError(err.message)
     } finally {
       setSaving(false)
+    }
+  }
+
+  // Duplicates the workout being edited onto the same day, carrying over
+  // whatever's currently in the form (so an in-progress edit gets copied too)
+  // except the Actual side, which starts blank on the copy — a copy is a new
+  // plan, not a record of what already happened. The original is untouched;
+  // this only creates a new one alongside it.
+  async function handleCopy() {
+    const values = {
+      ...form,
+      planned_duration: expandDurationShorthand(form.planned_duration),
+    }
+    const errs = validate(values)
+    if (Object.keys(errs).length) { setErrors(errs); return }
+
+    const payload = {
+      date:                     values.date,
+      sport:                    values.sport,
+      name:                     values.name.trim(),
+      description:              values.description.trim() || null,
+      planned_duration_minutes: isNoteLike ? null : parseDuration(values.planned_duration),
+      planned_distance_km:      isNoteLike || isStrength ? null : (values.planned_distance !== '' ? parseFloat(values.planned_distance) : null),
+      actual_duration_minutes:  null,
+      actual_distance_km:       null,
+      is_brick:                 isBrickable ? values.is_brick : false,
+      gym_exercises:            isStrength ? buildGymExercises(values.gym_exercises) : null,
+    }
+
+    setCopying(true)
+    setSubmitError(null)
+    try {
+      await api.create(payload)
+      onSaved()
+    } catch (err) {
+      setSubmitError(err.message)
+    } finally {
+      setCopying(false)
     }
   }
 
@@ -281,7 +396,7 @@ export default function WorkoutModal({ workout, initialDate, onClose, onSaved, o
             <label className="form-label">Type</label>
             <select className="form-select" value={form.sport} onChange={e => set('sport', e.target.value)}>
               {sportOptions.map(s => (
-                <option key={s} value={s}>{s.charAt(0).toUpperCase() + s.slice(1)}</option>
+                <option key={s} value={s}>{SPORT_LABELS[s] ?? (s.charAt(0).toUpperCase() + s.slice(1))}</option>
               ))}
             </select>
           </div>
@@ -331,6 +446,99 @@ export default function WorkoutModal({ workout, initialDate, onClose, onSaved, o
                 onChange={e => set('description', e.target.value)}
                 rows={3}
               />
+            </div>
+          )}
+
+          {isStrength && (
+            <div className="form-row">
+              <label className="form-label">Exercises</label>
+              <div className="gym-exercises">
+                <div className="gym-exercises__scroll">
+                  <table className="gym-exercises__table">
+                    <thead>
+                      <tr>
+                        <th>Activity</th>
+                        <th>Sets</th>
+                        <th>Reps</th>
+                        <th>Weight</th>
+                        <th className="gym-exercises__th--center">BW</th>
+                        <th></th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {form.gym_exercises.map((ex, i) => (
+                        <tr key={i}>
+                          <td>
+                            <textarea
+                              rows={1}
+                              className="form-input gym-exercises__input gym-exercises__input--name"
+                              placeholder="e.g. Bench Press"
+                              value={ex.name}
+                              ref={autoResizeTextarea}
+                              onChange={e => { setExercise(i, 'name', e.target.value); autoResizeTextarea(e.target) }}
+                            />
+                          </td>
+                          <td>
+                            <input
+                              type="number"
+                              min="0"
+                              className="form-input gym-exercises__input gym-exercises__input--num"
+                              value={ex.sets}
+                              onChange={e => setExercise(i, 'sets', e.target.value)}
+                            />
+                          </td>
+                          <td>
+                            <input
+                              type="number"
+                              min="0"
+                              className="form-input gym-exercises__input gym-exercises__input--num"
+                              value={ex.reps}
+                              onChange={e => setExercise(i, 'reps', e.target.value)}
+                            />
+                          </td>
+                          <td>
+                            {!ex.bodyweight && (
+                              <div className="gym-exercises__weight-cell">
+                                <input
+                                  type="text"
+                                  inputMode="numeric"
+                                  pattern="[0-9]*"
+                                  maxLength={3}
+                                  className="form-input gym-exercises__input gym-exercises__input--weight"
+                                  value={ex.weight}
+                                  onChange={e => setExerciseWeight(i, e.target.value)}
+                                />
+                                <span className="gym-exercises__weight-unit">kg</span>
+                              </div>
+                            )}
+                          </td>
+                          <td className="gym-exercises__td--center">
+                            <input
+                              type="checkbox"
+                              className="gym-exercises__bodyweight-checkbox"
+                              checked={ex.bodyweight}
+                              onChange={e => toggleExerciseBodyweight(i, e.target.checked)}
+                            />
+                          </td>
+                          <td>
+                            <button
+                              type="button"
+                              className="gym-exercises__remove"
+                              onClick={() => removeExercise(i)}
+                              aria-label="Remove exercise"
+                            >
+                              ✕
+                            </button>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+                <button type="button" className="btn btn--secondary gym-exercises__add" onClick={addExercise}>
+                  + Add Exercise
+                </button>
+              </div>
             </div>
           )}
 
@@ -437,14 +645,26 @@ export default function WorkoutModal({ workout, initialDate, onClose, onSaved, o
 
           <div className="modal-actions">
             {isEdit && (
-              <button
-                type="button"
-                className="btn btn--danger"
-                onClick={handleDelete}
-                disabled={deleting}
-              >
-                {deleting ? 'Deleting…' : 'Delete'}
-              </button>
+              <div className="modal-actions__left">
+                <button
+                  type="button"
+                  className="btn btn--danger"
+                  onClick={handleDelete}
+                  disabled={deleting}
+                >
+                  {deleting ? 'Deleting…' : 'Delete'}
+                </button>
+                {!isNoteLike && (
+                  <button
+                    type="button"
+                    className="btn btn--secondary"
+                    onClick={handleCopy}
+                    disabled={copying}
+                  >
+                    {copying ? 'Copying…' : 'Copy'}
+                  </button>
+                )}
+              </div>
             )}
             <div className="modal-actions__right">
               <button type="button" className="btn btn--secondary" onClick={close}>Cancel</button>

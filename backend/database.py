@@ -29,6 +29,11 @@ SCHEMA_SQL = """
     -- safe to re-run on every startup, same as the CREATE TABLEs above.
     ALTER TABLE workouts ADD COLUMN IF NOT EXISTS is_brick BOOLEAN NOT NULL DEFAULT FALSE;
 
+    -- Gym (strength) exercise breakdown: JSON-encoded array of
+    -- {name, sets, reps, weight}, stored as text since only the backend
+    -- ever reads/writes it as a whole (no per-exercise SQL querying needed).
+    ALTER TABLE workouts ADD COLUMN IF NOT EXISTS gym_exercises TEXT;
+
     -- completed was write-only (set on insert/Garmin sync, never read —
     -- actual card status is derived from planned vs. actual numbers
     -- instead) and has been fully removed from the model/code; drop it

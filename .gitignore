@@ -1,5 +1,6 @@
 backend/venv/
 backend/workouts.db
+backend/.garmin_tokens/
 frontend/node_modules/
 frontend/dist/
 __pycache__/

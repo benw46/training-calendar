@@ -9,15 +9,17 @@ function weekTotal(workoutsByDate, monday, field) {
   return total
 }
 
-// Strength (and anything else not swim/bike/run) is bucketed into "other",
+// Anything not swim/bike/run/strength(gym) is bucketed into "other",
 // matching SummaryPanel's own sport grouping.
 function weekTotalsBySport(workoutsByDate, monday, field) {
-  const totals = { swim: 0, bike: 0, run: 0, other: 0 }
+  const totals = { swim: 0, bike: 0, run: 0, gym: 0, other: 0 }
   for (let i = 0; i < 7; i++) {
     const list = workoutsByDate[toYMD(addDays(monday, i))]
     if (!list) continue
     for (const w of list) {
-      const bucket = w.sport === 'swim' || w.sport === 'bike' || w.sport === 'run' ? w.sport : 'other'
+      const bucket = w.sport === 'swim' || w.sport === 'bike' || w.sport === 'run'
+        ? w.sport
+        : w.sport === 'strength' ? 'gym' : 'other'
       totals[bucket] += w[field] ?? 0
     }
   }

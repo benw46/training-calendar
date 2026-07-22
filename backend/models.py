@@ -1,3 +1,4 @@
+import json
 import re
 
 from pydantic import BaseModel, field_validator
@@ -15,6 +16,14 @@ class Sport(str, Enum):
     event = "event"
 
 
+class GymExercise(BaseModel):
+    name: str
+    sets: Optional[int] = None
+    reps: Optional[int] = None
+    weight: Optional[int] = None  # kg
+    bodyweight: bool = False
+
+
 class WorkoutBase(BaseModel):
     date: str  # YYYY-MM-DD
     sport: Sport
@@ -26,6 +35,7 @@ class WorkoutBase(BaseModel):
     garmin_activity_id: Optional[str] = None
     description: Optional[str] = None
     is_brick: bool = False
+    gym_exercises: Optional[list[GymExercise]] = None
 
 
 class WorkoutCreate(WorkoutBase):
@@ -43,6 +53,7 @@ class WorkoutUpdate(BaseModel):
     description: Optional[str] = None
     sort_order: Optional[int] = None
     is_brick: Optional[bool] = None
+    gym_exercises: Optional[list[GymExercise]] = None
 
 
 class WorkoutOut(WorkoutBase):
@@ -64,6 +75,7 @@ class WorkoutOut(WorkoutBase):
             description=row["description"],
             sort_order=row["sort_order"],
             is_brick=bool(row["is_brick"]),
+            gym_exercises=json.loads(row["gym_exercises"]) if row["gym_exercises"] else None,
         )
 
 

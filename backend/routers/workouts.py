@@ -1,3 +1,4 @@
+import json
 from datetime import date as date_cls
 
 from fastapi import APIRouter, Depends, HTTPException
@@ -31,12 +32,17 @@ def get_next_events(limit: int = 3):
 
 @router.post("/", response_model=WorkoutOut, status_code=201)
 def create_workout(body: WorkoutCreate):
+    gym_exercises = (
+        json.dumps([e.model_dump() for e in body.gym_exercises])
+        if body.gym_exercises else None
+    )
     with get_conn() as conn:
         cur = conn.execute(
             """INSERT INTO workouts
                (date, sport, name, planned_duration_minutes, planned_distance_km,
-                actual_duration_minutes, actual_distance_km, description, is_brick)
-               VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+                actual_duration_minutes, actual_distance_km, description, is_brick,
+                gym_exercises)
+               VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                RETURNING id""",
             (
                 body.date,
@@ -48,6 +54,7 @@ def create_workout(body: WorkoutCreate):
                 body.actual_distance_km,
                 body.description,
                 body.is_brick,
+                gym_exercises,
             ),
         )
         new_id = cur.fetchone()["id"]
@@ -70,6 +77,9 @@ def update_workout(workout_id: int, body: WorkoutUpdate):
 
     if "sport" in updates:
         updates["sport"] = updates["sport"].value
+
+    if "gym_exercises" in updates:
+        updates["gym_exercises"] = json.dumps(updates["gym_exercises"]) if updates["gym_exercises"] else None
 
     fields = ", ".join(f"{k} = ?" for k in updates)
     values = list(updates.values()) + [workout_id]

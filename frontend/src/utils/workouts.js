@@ -4,7 +4,7 @@ export const SPORT_COLORS = {
   swim:     '#0ea5e9',
   bike:     '#8b5cf6',
   run:      '#22c55e',
-  strength: '#6b7280',
+  strength: '#f97316',
   other:    '#6b7280',
   note:     '#d97706',
   event:    '#fbbf24',
@@ -57,6 +57,13 @@ export function fmtDuration(minutes) {
 export function fmtDistance(km) {
   if (km == null) return null
   return `${km.toFixed(1)}km`
+}
+
+export function fmtExercise(ex) {
+  const setsReps = ex.sets != null && ex.reps != null ? `${ex.sets}×${ex.reps}` : null
+  const load = ex.bodyweight ? 'bodyweight' : (ex.weight != null ? `${ex.weight}kg` : null)
+  const detail = [setsReps, load].filter(Boolean).join(' · ')
+  return detail ? `${ex.name} — ${detail}` : ex.name
 }
 
 export function listToByDate(list) {

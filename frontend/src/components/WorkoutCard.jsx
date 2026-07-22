@@ -1,5 +1,5 @@
 import SportIcon from './SportIcon'
-import { getCardStatus, fmtDuration, fmtDistance, STATUS_BAR_COLOR } from '../utils/workouts'
+import { getCardStatus, fmtDuration, fmtDistance, fmtExercise, STATUS_BAR_COLOR } from '../utils/workouts'
 
 export default function WorkoutCard({
   workout, today, onClick,
@@ -63,6 +63,14 @@ export default function WorkoutCard({
 
         {workout.description && (
           <p className="workout-card__description">{workout.description}</p>
+        )}
+
+        {isStrength && workout.gym_exercises?.length > 0 && (
+          <ul className="workout-card__exercises">
+            {workout.gym_exercises.map((ex, i) => (
+              <li key={i}>{fmtExercise(ex)}</li>
+            ))}
+          </ul>
         )}
 
         {workout.sport !== 'note' && workout.sport !== 'event' && (
