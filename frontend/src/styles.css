@@ -602,7 +602,13 @@ body {
 }
 
 .day-header__secondary {
-  font-size: 15px;
+  /* Matches .day-header__primary's size so this span (only present on the
+     1st of a month and on "Today") doesn't have a taller ascent than the
+     day number. With the header's align-items: baseline, a larger secondary
+     grew the row above the baseline, pushing the numeral down and making
+     those cells sit deeper than their neighbours. Same size = same height,
+     so the number stays on the same baseline across the whole row. */
+  font-size: 13px;
   font-weight: 600;
   color: #b0b7c3;
   line-height: 1.4;
