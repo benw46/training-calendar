@@ -3,7 +3,11 @@ import os
 from datetime import date, datetime, timedelta, timezone
 
 from fastapi import APIRouter, Depends, HTTPException
-from garminconnect import Garmin
+from garminconnect import (
+    Garmin,
+    GarminConnectAuthenticationError,
+    GarminConnectTooManyRequestsError,
+)
 
 from auth import require_auth
 from database import get_conn
@@ -37,33 +41,53 @@ def _save_cached_tokens(token_data):
         conn.commit()
 
 
-# Garmin's SSO login endpoint (sso.garmin.com/mobile/api/login) rate-limits
-# repeated logins fairly aggressively. Session tokens are cached in the
-# database (rather than on local disk, which Render wipes on every redeploy
-# and on spin-down/cold-start) so a sync only hits that endpoint when there's
-# no cached session yet or the cached one has actually expired — every other
-# sync reuses it instead of logging in from scratch.
-def _get_garmin_client(email, password):
+def _fresh_login(email, password):
+    """Do a full SSO login (the rate-limited path) and cache the new session.
+
+    Only ever called when there is no usable cached session — never as a
+    reaction to a transient error, and never on a 429, both of which would
+    just hammer the endpoint Garmin throttles hardest.
+    """
     client = Garmin(email, password)
-
-    cached = _load_cached_tokens()
-    if cached:
-        try:
-            client.garth.loads(cached)
-            # loads() is pure deserialization — nothing has actually confirmed
-            # the token still works, so make one cheap call that would fail
-            # if Garmin has since expired or revoked it.
-            client.display_name = client.garth.profile["displayName"]
-            return client
-        except Exception:
-            logger.info("Cached Garmin session invalid or expired; logging in fresh")
-
     client.login()
     try:
         _save_cached_tokens(client.garth.dumps())
     except Exception:
         logger.exception("Failed to cache Garmin session tokens")
     return client
+
+
+# Garmin's SSO login endpoint (sso.garmin.com/mobile/api/login) rate-limits
+# repeated logins fairly aggressively. Session tokens are cached in the
+# database (rather than on local disk, which Render wipes on every redeploy
+# and on spin-down/cold-start) so a sync only hits that endpoint when there's
+# no cached session at all — every other sync reuses the cached one.
+def _get_garmin_client(email, password):
+    """Return (client, from_cache).
+
+    A cached session is loaded with garth.loads(), which is *pure
+    deserialization* — it makes no network call and so can't fail for a
+    transient/rate-limit reason. That matters: the previous version made an
+    eager `garth.profile` network call here to "validate" the token, and any
+    hiccup on that call (including Garmin throttling it from a cloud IP) fell
+    straight through to client.login() — turning a good cached session into a
+    guaranteed 429 storm on the login endpoint. We no longer do that.
+
+    The short-lived OAuth2 half of a cached session is refreshed automatically
+    by garth on the first real API call, via a connectapi token *exchange*
+    (NOT the login endpoint), so a cached OAuth1 token keeps working for months
+    without ever touching the rate-limited path.
+    """
+    cached = _load_cached_tokens()
+    if cached:
+        try:
+            client = Garmin(email, password)
+            client.garth.loads(cached)
+            return client, True
+        except Exception:
+            logger.info("Cached Garmin session could not be loaded; logging in fresh")
+
+    return _fresh_login(email, password), False
 
 
 SPORT_MAP = {
@@ -101,7 +125,12 @@ def sync_garmin():
         )
 
     try:
-        client = _get_garmin_client(email, password)
+        client, from_cache = _get_garmin_client(email, password)
+    except GarminConnectTooManyRequestsError as exc:
+        raise HTTPException(
+            status_code=429,
+            detail=f"Garmin is rate-limiting logins; wait a while and try again: {exc}",
+        )
     except Exception as exc:
         raise HTTPException(status_code=502, detail=f"Garmin login failed: {exc}")
 
@@ -128,8 +157,41 @@ def sync_garmin():
         activities = client.get_activities_by_date(
             start_date.isoformat(), end_date.isoformat()
         )
+    except GarminConnectTooManyRequestsError as exc:
+        raise HTTPException(
+            status_code=429,
+            detail=f"Garmin is rate-limiting requests; wait a while and try again: {exc}",
+        )
+    except GarminConnectAuthenticationError as exc:
+        # A cached session that Garmin actually rejects (revoked/expired
+        # OAuth1) is the one case where a fresh login is warranted — do it
+        # exactly once and retry. If we weren't using a cached session, the
+        # login just happened, so there's nothing to retry.
+        if not from_cache:
+            raise HTTPException(status_code=502, detail=f"Garmin fetch failed: {exc}")
+        logger.info("Cached Garmin session rejected; logging in fresh and retrying once")
+        try:
+            client = _fresh_login(email, password)
+            activities = client.get_activities_by_date(
+                start_date.isoformat(), end_date.isoformat()
+            )
+        except GarminConnectTooManyRequestsError as retry_exc:
+            raise HTTPException(
+                status_code=429,
+                detail=f"Garmin is rate-limiting logins; wait a while and try again: {retry_exc}",
+            )
+        except Exception as retry_exc:
+            raise HTTPException(status_code=502, detail=f"Garmin fetch failed: {retry_exc}")
     except Exception as exc:
         raise HTTPException(status_code=502, detail=f"Garmin fetch failed: {exc}")
+
+    # The OAuth2 half of the session may have been refreshed during the fetch
+    # above; persist the current session so the cache stays fresh and the next
+    # sync doesn't start from a stale (soon-to-refresh) token.
+    try:
+        _save_cached_tokens(client.garth.dumps())
+    except Exception:
+        logger.exception("Failed to update cached Garmin session tokens")
 
     synced = 0
     unmatched = 0
