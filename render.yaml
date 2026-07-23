@@ -1,6 +1,6 @@
 services:
   - type: web
-    name: training-calendar-api
+    name: training-calendar
     runtime: python
     # eu-west-1 (the Supabase DB) is ~20-30ms from Frankfurt vs ~130-150ms
     # from Oregon, so co-locating the API here cuts the per-request auth +
