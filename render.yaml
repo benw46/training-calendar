@@ -2,6 +2,11 @@ services:
   - type: web
     name: training-calendar-api
     runtime: python
+    # eu-west-1 (the Supabase DB) is ~20-30ms from Frankfurt vs ~130-150ms
+    # from Oregon, so co-locating the API here cuts the per-request auth +
+    # DB-connect round trips roughly in half. Region is fixed at service
+    # creation — this line only takes effect for a NEWLY created service.
+    region: frankfurt
     rootDir: backend
     buildCommand: pip install -r requirements.txt
     startCommand: uvicorn main:app --host 0.0.0.0 --port $PORT
