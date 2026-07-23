@@ -274,14 +274,20 @@ function WeeklyDurationChart({ points, ariaLabel, width = 340, height = 260, svg
         )
       })}
 
-      {points.map((p, i) => (
-        shouldShowLabel(i) && (
+      {points.map((p, i) => {
+        if (!shouldShowLabel(i)) return null
+        // The first/last labels sit right at the chart's left/right edge, so
+        // centering them lets half the text spill past the SVG viewBox and
+        // get clipped (e.g. the trailing "0" of "Jul 20"). Anchor those two
+        // inward (start/end) instead; interior labels stay centered.
+        const anchor = i === 0 ? 'start' : i === lastIndex ? 'end' : 'middle'
+        return (
           <text key={i} x={xAt(i)} y={height - padding.bottom + 18}
-                textAnchor="middle" fontSize="9" fill="#6b7280">
+                textAnchor={anchor} fontSize="9" fill="#6b7280">
             {p.label}
           </text>
         )
-      ))}
+      })}
 
       <path d={linePath} fill="none" stroke="#2563eb" strokeWidth="2.5"
             strokeLinejoin="round" strokeLinecap="round" />
