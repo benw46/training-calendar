@@ -106,3 +106,9 @@ class RaceBestOut(BaseModel):
     race_name: Optional[str] = None
     result: Optional[str] = None
     date: Optional[str] = None
+
+
+class RaceBestsReorder(BaseModel):
+    # The race types in the desired display order; each row's sort_order is set
+    # to its index in this list.
+    order: list[RaceType]

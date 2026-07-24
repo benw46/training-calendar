@@ -77,11 +77,9 @@ function formatFullDate(dateStr) {
   return new Date(dateStr + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
 }
 
-const RACE_TYPE_KEYS = ['half_marathon', 'marathon', 'ironman']
-
 const RACE_TIME_PATTERN = /^\d{1,2}:\d{2}:\d{2}$/
 
-function RaceBestsTable({ records, onSave }) {
+function RaceBestsTable({ records, onSave, draggedIndex, onDragStart, onDragOver, onDragEnd }) {
   const [drafts, setDrafts] = useState({}) // { [raceType]: { race_name?, result?, date? } }
   const dateInputRefs = useRef({})
 
@@ -137,19 +135,46 @@ function RaceBestsTable({ records, onSave }) {
         </tr>
       </thead>
       <tbody>
-        {RACE_TYPE_KEYS.map(key => {
-          const record = recordFor(key)
+        {records.map((record, index) => {
+          const key = record.race_type
           return (
-            <tr key={key}>
+            <tr
+              key={key}
+              className={draggedIndex === index ? 'pr-table__row--dragging' : ''}
+              onDragOver={e => { e.preventDefault(); onDragOver(index) }}
+              onDrop={e => e.preventDefault()}
+            >
               <td>
-                <input
-                  type="text"
-                  className="race-best-input race-best-input--name"
-                  placeholder="Race name"
-                  value={fieldValue(key, 'race_name')}
-                  onChange={e => handleChange(key, 'race_name', e.target.value)}
-                  onBlur={() => handleBlurText(key, 'race_name')}
-                />
+                {/* Handle lives inside the first cell (rather than its own
+                    column) so this table keeps the same 4-column widths as the
+                    Personal Bests table below it and stays aligned with it. */}
+                <div className="race-best-name-cell">
+                  <span
+                    className="pr-table__drag-handle"
+                    draggable
+                    onDragStart={e => { e.dataTransfer.effectAllowed = 'move'; onDragStart(index) }}
+                    onDragEnd={onDragEnd}
+                    aria-label="Drag to reorder"
+                    title="Drag to reorder"
+                  >
+                    <svg viewBox="0 0 10 16" width="10" height="16" aria-hidden="true">
+                      <circle cx="3" cy="3" r="1.3" fill="currentColor" />
+                      <circle cx="7" cy="3" r="1.3" fill="currentColor" />
+                      <circle cx="3" cy="8" r="1.3" fill="currentColor" />
+                      <circle cx="7" cy="8" r="1.3" fill="currentColor" />
+                      <circle cx="3" cy="13" r="1.3" fill="currentColor" />
+                      <circle cx="7" cy="13" r="1.3" fill="currentColor" />
+                    </svg>
+                  </span>
+                  <input
+                    type="text"
+                    className="race-best-input race-best-input--name"
+                    placeholder="Race name"
+                    value={fieldValue(key, 'race_name')}
+                    onChange={e => handleChange(key, 'race_name', e.target.value)}
+                    onBlur={() => handleBlurText(key, 'race_name')}
+                  />
+                </div>
               </td>
               <td>
                 <input
@@ -353,6 +378,7 @@ export default function GraphsModal({ onClose }) {
   const [error3mo, setError3mo]     = useState(null)
   const [errorYear, setErrorYear]   = useState(null)
   const [errorRaces, setErrorRaces] = useState(null)
+  const [draggedRaceIndex, setDraggedRaceIndex] = useState(null)
   const close = useCallback(onClose, [onClose])
 
   // The year chart's own dimensions are derived (below) from these two
@@ -420,6 +446,29 @@ export default function GraphsModal({ onClose }) {
       .catch(err => setErrorRaces(err.message))
   }
 
+  // Drag reordering of the race rows. The order updates live as the pointer
+  // passes over another row (like the gym-exercises table), then persists once
+  // on drop — a race row carries its own race_type, so a reorder only shuffles
+  // display order and never touches the per-race values.
+  function handleRaceDragOver(index) {
+    if (draggedRaceIndex === null || draggedRaceIndex === index) return
+    setRaceBests(rows => {
+      const next = [...rows]
+      const [moved] = next.splice(draggedRaceIndex, 1)
+      next.splice(index, 0, moved)
+      return next
+    })
+    setDraggedRaceIndex(index)
+  }
+
+  function handleRaceDragEnd() {
+    setDraggedRaceIndex(null)
+    if (raceBests) {
+      api.reorderRaceBests(raceBests.map(r => r.race_type))
+        .catch(err => setErrorRaces(err.message))
+    }
+  }
+
   function handleBackdrop(e) {
     if (e.target === e.currentTarget) close()
   }
@@ -441,7 +490,16 @@ export default function GraphsModal({ onClose }) {
               <h3 className="graph-panel-title">Personal Bests — Races</h3>
               {errorRaces && <div className="modal-submit-error">Couldn't load data — {errorRaces}</div>}
               {!errorRaces && !raceBests && <div className="graph-loading">Loading…</div>}
-              {raceBests && <RaceBestsTable records={raceBests} onSave={handleSaveRaceBest} />}
+              {raceBests && (
+                <RaceBestsTable
+                  records={raceBests}
+                  onSave={handleSaveRaceBest}
+                  draggedIndex={draggedRaceIndex}
+                  onDragStart={setDraggedRaceIndex}
+                  onDragOver={handleRaceDragOver}
+                  onDragEnd={handleRaceDragEnd}
+                />
+              )}
             </div>
 
             <div className="graph-panel--table-block">

@@ -1381,6 +1381,35 @@ body {
   width: 195px;
 }
 
+/* Drag handle sits to the left of the race-name input, inside the first cell. */
+.race-best-name-cell {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.pr-table__drag-handle {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: none;
+  color: #b0b5c0;
+  cursor: grab;
+  padding: 2px 1px;
+}
+
+.pr-table__drag-handle:hover {
+  color: #6b7280;
+}
+
+.pr-table__drag-handle:active {
+  cursor: grabbing;
+}
+
+.pr-table__row--dragging td {
+  background: #eef2ff;
+}
+
 .race-best-date-cell {
   position: relative;
 }

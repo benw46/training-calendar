@@ -74,15 +74,28 @@ SCHEMA_SQL = """
         race_type TEXT PRIMARY KEY,
         race_name TEXT,
         result TEXT,
-        date TEXT
+        date TEXT,
+        sort_order INTEGER
     );
+
+    -- sort_order drives the (user-draggable) display order of the races.
+    -- Backfill the original fixed order for any pre-existing rows that predate
+    -- this column; only touches NULLs, so a user's chosen order is never reset.
+    ALTER TABLE race_bests ADD COLUMN IF NOT EXISTS sort_order INTEGER;
+    UPDATE race_bests SET sort_order = CASE race_type
+            WHEN 'half_marathon' THEN 0
+            WHEN 'marathon' THEN 1
+            WHEN 'ironman' THEN 2
+            ELSE 99
+        END
+        WHERE sort_order IS NULL;
 """
 
 SEED_RACE_TYPES_SQL = """
-    INSERT INTO race_bests (race_type, race_name, result, date) VALUES
-        ('half_marathon', NULL, NULL, NULL),
-        ('marathon', NULL, NULL, NULL),
-        ('ironman', NULL, NULL, NULL)
+    INSERT INTO race_bests (race_type, race_name, result, date, sort_order) VALUES
+        ('half_marathon', NULL, NULL, NULL, 0),
+        ('marathon', NULL, NULL, NULL, 1),
+        ('ironman', NULL, NULL, NULL, 2)
     ON CONFLICT (race_type) DO NOTHING;
 """
 
