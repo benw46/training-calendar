@@ -1206,7 +1206,12 @@ body {
 .modal {
   background: #fff;
   border-radius: 10px;
-  width: 430px;
+  /* 50% wider than the old fixed 430px (→ 645px) at desktop widths, but fluid:
+     it tracks 60vw so it gets thinner as the window narrows. The 60vw factor is
+     chosen so the clamp bottoms out at its 430px minimum for any viewport below
+     ~717px — i.e. phone mode (< 700px) keeps exactly the old 430px width (still
+     capped by max-width on very small screens), unchanged. */
+  width: clamp(430px, 60vw, 645px);
   max-width: calc(100vw - 32px);
   max-height: calc(100vh - 48px);
   overflow-y: auto;
