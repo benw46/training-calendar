@@ -46,6 +46,14 @@ SCHEMA_SQL = """
         data_watermark TEXT
     );
 
+    -- On-demand sync plumbing: the "Sync" button (via the Render API) stamps
+    -- sync_requested_at and NOTIFYs; the Raspberry Pi daemon does the actual
+    -- Garmin fetch and records the run's counts in last_synced_result (JSON)
+    -- so the frontend can show "N new activities added" without the fetch
+    -- ever happening on this datacenter-IP host. See routers/garmin.py.
+    ALTER TABLE sync_status ADD COLUMN IF NOT EXISTS sync_requested_at TEXT;
+    ALTER TABLE sync_status ADD COLUMN IF NOT EXISTS last_synced_result TEXT;
+
     -- Garmin's Garth session (oauth1 + oauth2 tokens), base64-encoded via
     -- garth.Client.dumps(). Stored here rather than on local disk so a
     -- cached session survives Render redeploys/spin-downs, which wipe the

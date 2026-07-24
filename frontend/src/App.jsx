@@ -12,6 +12,26 @@ import { supabase } from './supabaseClient'
 
 const MONTH_NAMES = ['January','February','March','April','May','June','July','August','September','October','November','December']
 
+// A sync no longer runs inside the API call — the request just wakes the Pi,
+// which does the fetch and writes a fresh last_synced_at. So after requesting,
+// poll last-sync until that timestamp *changes* from what it was before (a
+// self-relative check, so it's immune to clock skew between Render and the Pi).
+// Returns the new last-sync payload, or null if it never landed (Pi offline).
+async function pollForSync(before, { timeoutMs = 90000, intervalMs = 1500 } = {}) {
+  const start = Date.now()
+  while (Date.now() - start < timeoutMs) {
+    await new Promise(r => setTimeout(r, intervalMs))
+    let r
+    try {
+      r = await api.getLastSync()
+    } catch {
+      continue // transient error mid-poll — keep trying until the timeout
+    }
+    if (r?.last_synced_at && r.last_synced_at !== before) return r
+  }
+  return null
+}
+
 // Below this width the 7-day desktop grid can't just shrink to fit — it
 // needs an entirely different layout, so the switch happens in JS (which
 // component tree mounts) rather than via CSS alone.
@@ -161,12 +181,19 @@ export default function App() {
   async function handleGarminSync() {
     setSyncing(true)
     setSyncMsg(null)
+    const before = lastSynced
     try {
-      const result = await api.syncGarmin()
-      setSyncMsg(`${result.unmatched} new activit${result.unmatched === 1 ? 'y' : 'ies'} added, ${result.synced} matched to plans`)
-      setLastSynced(result.last_synced_at)
-      reloadRef.current?.()
-      refreshNextEvents()
+      await api.syncGarmin()               // wakes the Pi; doesn't fetch itself
+      const r = await pollForSync(before)  // wait for the Pi to report a result
+      if (r) {
+        const { synced = 0, unmatched = 0 } = r.last_result || {}
+        setSyncMsg(`${unmatched} new activit${unmatched === 1 ? 'y' : 'ies'} added, ${synced} matched to plans`)
+        setLastSynced(r.last_synced_at)
+        reloadRef.current?.()
+        refreshNextEvents()
+      } else {
+        setSyncMsg('Sync queued — it will run when your Pi is next online')
+      }
     } catch (err) {
       setSyncMsg(`Sync failed — ${err.message}`)
     } finally {
