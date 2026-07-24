@@ -58,6 +58,25 @@ def _latest_request():
     return row["sync_requested_at"] if row else None
 
 
+def _heartbeat():
+    """Stamp pi_heartbeat_at = now so the UI can tell the Pi is alive.
+
+    Best-effort: a failed heartbeat just briefly shows the Pi as offline and
+    self-heals on the next loop, so it must never disturb the daemon.
+    """
+    try:
+        now = datetime.now(timezone.utc).isoformat()
+        with get_conn() as conn:
+            conn.execute(
+                """INSERT INTO sync_status (id, pi_heartbeat_at) VALUES (1, ?)
+                   ON CONFLICT (id) DO UPDATE SET pi_heartbeat_at = EXCLUDED.pi_heartbeat_at""",
+                (now,),
+            )
+            conn.commit()
+    except Exception:
+        logger.debug("Heartbeat write failed", exc_info=True)
+
+
 def _sync(reason):
     logger.info("Sync triggered (%s)", reason)
     try:
@@ -81,6 +100,10 @@ def _connect_listen():
 
 
 def main():
+    # Stamp a heartbeat before anything else so the UI shows the Pi online the
+    # moment the daemon starts, not only after the first sync finishes.
+    _heartbeat()
+
     # Sync once on startup so a fresh boot (or a request that arrived while the
     # daemon was down) is honoured immediately.
     _sync("startup")
@@ -90,6 +113,7 @@ def main():
     conn = _connect_listen()
     while True:
         try:
+            _heartbeat()  # once per loop → refreshed at least every WAIT_TIMEOUT
             ready, _, _ = select.select([conn], [], [], WAIT_TIMEOUT)
 
             if ready:

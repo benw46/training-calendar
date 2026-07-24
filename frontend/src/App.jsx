@@ -138,6 +138,7 @@ export default function App() {
   const [syncing, setSyncing] = useState(false)
   const [syncMsg, setSyncMsg] = useState(null)
   const [lastSynced, setLastSynced] = useState(null)
+  const [piOnline, setPiOnline] = useState(null)  // null = not yet checked
   const [nextEvents, setNextEvents] = useState([])
   const [showGraphs, setShowGraphs] = useState(false)
 
@@ -169,6 +170,19 @@ export default function App() {
     api.getLastSync().then(r => setLastSynced(r.last_synced_at)).catch(() => {})
   }, [session])
 
+  // Poll the Pi's liveness so the header dot reflects whether on-demand syncing
+  // is currently available. 30s is well within the backend's 60s online window,
+  // so a Pi going offline surfaces within a poll or two.
+  useEffect(() => {
+    if (!session) return
+    let active = true
+    const check = () =>
+      api.getPiStatus().then(r => { if (active) setPiOnline(r.pi_online) }).catch(() => {})
+    check()
+    const id = setInterval(check, 30000)
+    return () => { active = false; clearInterval(id) }
+  }, [session])
+
   const refreshNextEvents = useCallback(() => {
     api.getNextEvents(3).then(setNextEvents).catch(() => {})
   }, [])
@@ -189,10 +203,12 @@ export default function App() {
         const { synced = 0, unmatched = 0 } = r.last_result || {}
         setSyncMsg(`${unmatched} new activit${unmatched === 1 ? 'y' : 'ies'} added, ${synced} matched to plans`)
         setLastSynced(r.last_synced_at)
+        setPiOnline(true)   // a completed sync proves the Pi is up
         reloadRef.current?.()
         refreshNextEvents()
       } else {
         setSyncMsg('Sync queued — it will run when your Pi is next online')
+        setPiOnline(false)  // nothing came back in time → Pi looks offline
       }
     } catch (err) {
       setSyncMsg(`Sync failed — ${err.message}`)
@@ -294,7 +310,7 @@ export default function App() {
               there's no row it naturally belongs to, and pinning it out of
               flow keeps the four action buttons' row widths (and so their
               matched sizing) unaffected by it. */}
-          <ColorLegend />
+          <ColorLegend piOnline={piOnline} />
         </header>
       ) : (
         <header className="app-header">
@@ -358,7 +374,7 @@ export default function App() {
               ) : 'Not yet synced'}
             </span>
 
-            <ColorLegend />
+            <ColorLegend piOnline={piOnline} />
 
             <button
               className="app-header__signout-btn"

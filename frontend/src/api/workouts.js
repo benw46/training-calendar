@@ -62,6 +62,9 @@ export const api = {
   getLastSync: () =>
     request('/garmin/last-sync'),
 
+  getPiStatus: () =>
+    request('/garmin/status'),
+
   getRaceBests: () =>
     request('/race-bests/'),
 

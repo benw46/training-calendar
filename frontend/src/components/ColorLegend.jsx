@@ -13,7 +13,7 @@ const ROWS = [
 const POPOVER_WIDTH = 350
 const VIEWPORT_MARGIN = 12 // px kept clear on each side so the popover never runs off-screen
 
-export default function ColorLegend() {
+export default function ColorLegend({ piOnline = null }) {
   const [pos, setPos] = useState(null) // { top, left, width } in viewport (fixed-position) coordinates; null = closed
   const triggerRef = useRef(null)
   const closeTimer = useRef(null)
@@ -121,6 +121,26 @@ export default function ColorLegend() {
               <span className="color-legend__text">{text}</span>
             </div>
           ))}
+
+          <div className="color-legend__divider" />
+
+          <div className="color-legend__section-title">Sync Pi</div>
+          <div className="color-legend__row">
+            <span
+              className={`color-legend__dot${piOnline === true ? ' color-legend__dot--pulse' : ''}`}
+              style={{ background: piOnline === null ? '#9ca3af' : piOnline ? '#22c55e' : '#ef4444' }}
+            />
+            <span className="color-legend__label">
+              {piOnline === null ? 'Checking…' : piOnline ? 'Online' : 'Offline'}
+            </span>
+            <span className="color-legend__text">
+              {piOnline === null
+                ? 'Checking whether the sync Pi is reachable.'
+                : piOnline
+                ? 'On-demand syncing is available.'
+                : 'Offline — syncs are paused until it is back online.'}
+            </span>
+          </div>
 
           <div className="color-legend__divider" />
 

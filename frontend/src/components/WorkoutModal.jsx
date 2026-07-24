@@ -497,7 +497,7 @@ export default function WorkoutModal({ workout, initialDate, onClose, onSaved, o
                         <th>Sets</th>
                         <th>Reps</th>
                         <th>Weight</th>
-                        <th className="gym-exercises__th--center">BW</th>
+                        <th className="gym-exercises__th--center">Bodyweight</th>
                         <th></th>
                       </tr>
                     </thead>

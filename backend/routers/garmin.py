@@ -14,6 +14,10 @@ logger = logging.getLogger(__name__)
 # CHANNEL in sync_daemon.py.
 SYNC_CHANNEL = "garmin_sync"
 
+# The Pi rewrites pi_heartbeat_at every ~15s; allow a couple of missed beats
+# before calling it offline so a single blip doesn't flap the indicator.
+PI_ONLINE_THRESHOLD_SECONDS = 60
+
 
 @router.post("/sync")
 def request_sync():
@@ -60,3 +64,34 @@ def get_last_sync():
         except (TypeError, ValueError):
             result = None
     return {"last_synced_at": row["last_synced_at"], "last_result": result}
+
+
+@router.get("/status")
+def get_status():
+    """Whether the Pi sync daemon is currently alive, from its heartbeat.
+
+    Online is computed here (server-side) so the frontend just renders a
+    boolean and doesn't have to reason about clock skew or timestamp formats.
+    """
+    with get_conn() as conn:
+        row = conn.execute(
+            "SELECT last_synced_at, pi_heartbeat_at FROM sync_status WHERE id = 1"
+        ).fetchone()
+
+    heartbeat = row["pi_heartbeat_at"] if row else None
+    pi_online = False
+    if heartbeat:
+        try:
+            hb = datetime.fromisoformat(heartbeat)
+            if hb.tzinfo is None:
+                hb = hb.replace(tzinfo=timezone.utc)
+            age = (datetime.now(timezone.utc) - hb).total_seconds()
+            pi_online = age < PI_ONLINE_THRESHOLD_SECONDS
+        except ValueError:
+            pi_online = False
+
+    return {
+        "pi_online": pi_online,
+        "pi_heartbeat_at": heartbeat,
+        "last_synced_at": row["last_synced_at"] if row else None,
+    }

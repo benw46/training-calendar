@@ -54,6 +54,11 @@ SCHEMA_SQL = """
     ALTER TABLE sync_status ADD COLUMN IF NOT EXISTS sync_requested_at TEXT;
     ALTER TABLE sync_status ADD COLUMN IF NOT EXISTS last_synced_result TEXT;
 
+    -- Liveness: the Pi daemon rewrites pi_heartbeat_at every ~15s while it's
+    -- running, so the UI can show whether the Pi (and therefore on-demand
+    -- syncing) is currently online — a recent timestamp means alive.
+    ALTER TABLE sync_status ADD COLUMN IF NOT EXISTS pi_heartbeat_at TEXT;
+
     -- Garmin's Garth session (oauth1 + oauth2 tokens), base64-encoded via
     -- garth.Client.dumps(). Stored here rather than on local disk so a
     -- cached session survives Render redeploys/spin-downs, which wipe the
