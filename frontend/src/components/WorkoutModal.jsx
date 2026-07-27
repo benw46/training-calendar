@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { api } from '../api/workouts'
 import { addWeeks, toYMD } from '../utils/dates'
+import { fmtRepsTime, repsTimeUnit } from '../utils/workouts'
 
 const SPORTS = ['swim', 'bike', 'run', 'strength', 'other', 'note', 'event', 'period']
 // 'strength' is the sport's stable internal/DB value; "Gym" is only how it's
@@ -9,7 +10,47 @@ const SPORTS = ['swim', 'bike', 'run', 'strength', 'other', 'note', 'event', 'pe
 const SPORT_LABELS = { strength: 'Gym' }
 const MAX_DURATION_MINUTES = 100 * 60
 const MAX_DISTANCE_KM = 500
-const EMPTY_EXERCISE = { name: '', sets: '', reps: '', weight: '', bodyweight: false }
+const EMPTY_EXERCISE = { name: '', sets: '', reps: '', weight: '', bodyweight: false, is_time: false }
+
+// With Time checked the Reps box holds m:ss / mm:ss instead of a count. It
+// still leaves here as a plain integer — total seconds — so `reps` is one
+// number downstream either way, with `is_time` marking which it is.
+function parseRepsTime(str) {
+  if (!str || !str.trim()) return null
+  const [m, s] = str.trim().split(':')
+  const mins = parseInt(m, 10)
+  if (isNaN(mins)) return null
+  const secs = parseInt(s, 10)
+  return mins * 60 + (isNaN(secs) ? 0 : secs)
+}
+
+// Digits and a single colon only. The seconds aren't range-checked here —
+// that waits for the blur below, so a half-typed "1:7" isn't rewritten out
+// from under the cursor before the second digit arrives. Digits with no colon
+// yet are still shorthand and may be a seconds count ("120"), so they get a
+// third digit that the mm of a finished mm:ss doesn't need.
+function sanitizeRepsTime(str) {
+  const [mins, ...rest] = str.replace(/[^\d:]/g, '').split(':')
+  if (!rest.length) return mins.slice(0, 3)
+  return `${mins.slice(0, 2)}:${rest.join('').slice(0, 2)}`
+}
+
+// Fills in what m:ss shorthand leaves out, once the field is left: a lone
+// seconds digit pads ("1:5" → "1:05") and anything past a minute clamps
+// ("1:75" → "1:59"). A bare number with no colon is minutes up to 10
+// ("3" → "3:00"); past that it's read as seconds ("45" → "0:45", "90" →
+// "1:30"), mirroring how expandDurationShorthand splits hours from minutes
+// by magnitude in the duration fields above.
+function normalizeRepsTime(str) {
+  const trimmed = str.trim()
+  if (!trimmed) return ''
+  const [m, s] = trimmed.split(':')
+  const mins = parseInt(m, 10)
+  if (isNaN(mins)) return ''
+  if (!s) return mins > 10 ? fmtRepsTime(mins) : `${mins}:00`
+  const secs = Math.min(parseInt(s, 10) || 0, 59)
+  return `${mins}:${String(secs).padStart(2, '0')}`
+}
 
 function parseDuration(str) {
   if (!str || !str.trim()) return null
@@ -62,9 +103,10 @@ function initExercises(gymExercises) {
   return gymExercises.map(ex => ({
     name:       ex.name ?? '',
     sets:       ex.sets ?? '',
-    reps:       ex.reps ?? '',
+    reps:       ex.is_time ? fmtRepsTime(ex.reps) : (ex.reps ?? ''),
     weight:     ex.weight ?? '',
     bodyweight: ex.bodyweight ?? false,
+    is_time:    ex.is_time ?? false,
   }))
 }
 
@@ -108,9 +150,10 @@ function buildGymExercises(rows) {
     .map(ex => ({
       name:       ex.name.trim(),
       sets:       ex.sets !== '' ? parseInt(ex.sets, 10) : null,
-      reps:       ex.reps !== '' ? parseInt(ex.reps, 10) : null,
+      reps:       ex.is_time ? parseRepsTime(ex.reps) : (ex.reps !== '' ? parseInt(ex.reps, 10) : null),
       weight:     !ex.bodyweight && ex.weight !== '' ? parseInt(ex.weight, 10) : null,
       bodyweight: ex.bodyweight,
+      is_time:    ex.is_time,
     }))
 }
 
@@ -187,6 +230,20 @@ export default function WorkoutModal({ workout, initialDate, onClose, onSaved, o
     setForm(f => {
       const rows = [...f.gym_exercises]
       rows[index] = { ...rows[index], bodyweight: checked, weight: checked ? '' : rows[index].weight }
+      return { ...f, gym_exercises: rows }
+    })
+  }
+
+  // The Reps box means two different things either side of this checkbox, so
+  // flipping it converts what's already typed rather than leaving a number to
+  // be silently reread: checking it treats a bare count as that many minutes,
+  // unchecking it keeps only the minutes.
+  function toggleExerciseTime(index, checked) {
+    setForm(f => {
+      const rows = [...f.gym_exercises]
+      const current = String(rows[index].reps)
+      const reps = checked ? normalizeRepsTime(current) : current.split(':')[0]
+      rows[index] = { ...rows[index], is_time: checked, reps }
       return { ...f, gym_exercises: rows }
     })
   }
@@ -497,6 +554,7 @@ export default function WorkoutModal({ workout, initialDate, onClose, onSaved, o
                         <th>Sets</th>
                         <th>Reps</th>
                         <th>Weight</th>
+                        <th className="gym-exercises__th--center">Time</th>
                         <th className="gym-exercises__th--center">Bodyweight</th>
                         <th></th>
                       </tr>
@@ -528,7 +586,7 @@ export default function WorkoutModal({ workout, initialDate, onClose, onSaved, o
                               </svg>
                             </span>
                           </td>
-                          <td>
+                          <td className="gym-exercises__td--name">
                             <textarea
                               rows={1}
                               className="form-input gym-exercises__input gym-exercises__input--name"
@@ -548,13 +606,28 @@ export default function WorkoutModal({ workout, initialDate, onClose, onSaved, o
                             />
                           </td>
                           <td>
-                            <input
-                              type="number"
-                              min="0"
-                              className="form-input gym-exercises__input gym-exercises__input--num"
-                              value={ex.reps}
-                              onChange={e => setExercise(i, 'reps', e.target.value)}
-                            />
+                            {ex.is_time ? (
+                              <div className="gym-exercises__reps-cell">
+                                <input
+                                  type="text"
+                                  inputMode="numeric"
+                                  className="form-input gym-exercises__input gym-exercises__input--time"
+                                  placeholder="m:ss"
+                                  value={ex.reps}
+                                  onChange={e => setExercise(i, 'reps', sanitizeRepsTime(e.target.value))}
+                                  onBlur={e => setExercise(i, 'reps', normalizeRepsTime(e.target.value))}
+                                />
+                                <span className="gym-exercises__reps-unit">{repsTimeUnit(parseRepsTime(ex.reps))}</span>
+                              </div>
+                            ) : (
+                              <input
+                                type="number"
+                                min="0"
+                                className="form-input gym-exercises__input gym-exercises__input--num"
+                                value={ex.reps}
+                                onChange={e => setExercise(i, 'reps', e.target.value)}
+                              />
+                            )}
                           </td>
                           <td>
                             {!ex.bodyweight && (
@@ -571,6 +644,14 @@ export default function WorkoutModal({ workout, initialDate, onClose, onSaved, o
                                 <span className="gym-exercises__weight-unit">kg</span>
                               </div>
                             )}
+                          </td>
+                          <td className="gym-exercises__td--center">
+                            <input
+                              type="checkbox"
+                              className="gym-exercises__time-checkbox"
+                              checked={ex.is_time}
+                              onChange={e => toggleExerciseTime(i, e.target.checked)}
+                            />
                           </td>
                           <td className="gym-exercises__td--center">
                             <input

@@ -19,9 +19,13 @@ class Sport(str, Enum):
 class GymExercise(BaseModel):
     name: str
     sets: Optional[int] = None
+    # Timed exercises (planks, holds) count seconds rather than reps, so
+    # `reps` carries total seconds whenever `is_time` is set — one integer
+    # either way. Rows written before the flag existed simply default to False.
     reps: Optional[int] = None
     weight: Optional[int] = None  # kg
     bodyweight: bool = False
+    is_time: bool = False
 
 
 class WorkoutBase(BaseModel):

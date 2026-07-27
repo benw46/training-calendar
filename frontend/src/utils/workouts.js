@@ -59,8 +59,28 @@ export function fmtDistance(km) {
   return `${km.toFixed(1)}km`
 }
 
+// A timed exercise stores its seconds in `reps` (see GymExercise in
+// backend/models.py), so it needs unpacking back into m:ss for display.
+export function fmtRepsTime(totalSeconds) {
+  if (totalSeconds == null) return ''
+  const m = Math.floor(totalSeconds / 60)
+  const s = totalSeconds % 60
+  return `${m}:${String(s).padStart(2, '0')}`
+}
+
+// The m:ss value keeps its shape whatever the length; only the unit beside
+// it changes — under a minute is counted in seconds, and exactly a minute is
+// singular.
+export function repsTimeUnit(totalSeconds) {
+  if (totalSeconds == null) return 'mins'
+  if (totalSeconds < 60) return 'secs'
+  if (totalSeconds === 60) return 'min'
+  return 'mins'
+}
+
 export function fmtExercise(ex) {
-  const setsReps = ex.sets && ex.reps ? `${ex.sets}×${ex.reps}` : null
+  const reps = ex.is_time ? `${fmtRepsTime(ex.reps)} ${repsTimeUnit(ex.reps)}` : ex.reps
+  const setsReps = ex.sets && ex.reps ? `${ex.sets}×${reps}` : null
   const load = ex.bodyweight ? 'bodyweight' : (ex.weight != null ? `${ex.weight}kg` : null)
   const detail = [setsReps, load].filter(Boolean).join(' · ')
   return detail ? `${ex.name} — ${detail}` : ex.name
