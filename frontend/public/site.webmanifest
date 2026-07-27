@@ -1,0 +1,10 @@
+{
+  "name": "RaceCondition",
+  "short_name": "RaceCondition",
+  "icons": [
+    { "src": "/icon-192.png", "type": "image/png", "sizes": "192x192" },
+    { "src": "/icon-512.png", "type": "image/png", "sizes": "512x512" }
+  ],
+  "theme_color": "#1d4ed8",
+  "background_color": "#1d4ed8"
+}

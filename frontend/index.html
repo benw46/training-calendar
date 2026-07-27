@@ -2,7 +2,18 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
+    <!-- Desktop browsers take the SVG (sharp at any size); the PNGs are for
+         the platforms that ignore SVG icons — Android Chrome reads the
+         manifest for its home-screen icon, iOS Safari the apple-touch-icon. -->
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32.png" />
+    <link rel="icon" type="image/png" sizes="192x192" href="/icon-192.png" />
+    <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+    <link rel="manifest" href="/site.webmanifest" />
+    <!-- Tints Chrome's address bar on Android to the header's blue. Matches
+         the manifest's theme_color, which covers the same thing once the app
+         is opened from a home-screen shortcut. -->
+    <meta name="theme-color" content="#1d4ed8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>RaceCondition</title>
   </head>
