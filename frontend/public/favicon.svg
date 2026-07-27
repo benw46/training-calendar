@@ -12,13 +12,14 @@
 
   <rect width="64" height="64" rx="14" fill="url(#rc-bg)" />
 
-  <!-- Sport-colour accent along the base, in the calendar's own swim /
-       run / strength hues, kept thin so it reads as a stripe at 16px
-       rather than competing with the letters. -->
+  <!-- Sport-colour accent along the base: the calendar's own swim / bike /
+       run hues (SPORT_COLORS in src/utils/workouts.js), left to right in
+       race order, kept thin so it reads as a stripe at 16px rather than
+       competing with the letters. -->
   <g opacity="0.9">
     <rect x="12" y="50" width="13.3" height="3.2" rx="1.6" fill="#0ea5e9" />
-    <rect x="25.3" y="50" width="13.3" height="3.2" rx="1.6" fill="#22c55e" />
-    <rect x="38.6" y="50" width="13.4" height="3.2" rx="1.6" fill="#f97316" />
+    <rect x="25.3" y="50" width="13.3" height="3.2" rx="1.6" fill="#8b5cf6" />
+    <rect x="38.6" y="50" width="13.4" height="3.2" rx="1.6" fill="#22c55e" />
   </g>
 
   <text x="32" y="38"

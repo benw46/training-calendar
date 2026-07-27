@@ -1747,6 +1747,21 @@ body {
   margin: 8px 0;
 }
 
+/* Icon and credit sit on one row, top-aligned so the mark lines up with the
+   first line of text rather than floating at the centre of a wrapped block. */
+.color-legend__credit-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+}
+
+.color-legend__credit-icon {
+  flex-shrink: 0;
+  width: 28px;
+  height: 28px;
+  border-radius: 6px;
+}
+
 .color-legend__credit {
   font-size: 11px;
   color: #9ca3af;
@@ -2007,11 +2022,13 @@ body {
   gap: 14px;
 }
 
-.login-title {
-  font-size: 20px;
-  font-weight: 700;
-  color: #111827;
-  text-align: center;
+/* The badge logo carries its own gradient background, so it spans the card's
+   full content width rather than sitting as a line of text. At 3.55:1 that
+   puts it ~80px tall inside the 284px-wide card. */
+.login-title__logo {
+  display: block;
+  width: 100%;
+  height: auto;
 }
 
 .login-subtitle {

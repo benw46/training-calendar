@@ -7,3 +7,11 @@ __pycache__/
 *.pyc
 .DS_Store
 .env
+
+# Local-only reference guide — deliberately not published to GitHub
+PROJECT-GUIDE.md
+
+# Claude Code: the shared project allowlist (.claude/settings.json) is
+# committed; personal per-machine approvals and lock files are not.
+.claude/settings.local.json
+.claude/scheduled_tasks.lock

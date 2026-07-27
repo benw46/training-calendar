@@ -1,0 +1,38 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="227" height="64" viewBox="0 0 227 64">
+  <!-- RaceCondition logo: favicon.svg widened to carry the full name. Same
+       blue-into-navy gradient, corner radius, 64u height, 30px/700 lettering
+       on a y=38 baseline, and the same sport stripes.
+
+       The name is a <text> element in the app's own font stack rather than
+       outlined paths, so it renders in whatever the viewer's OS supplies —
+       San Francisco, Segoe UI, Roboto. Those differ slightly in width, which
+       is why the side padding is generous (16u against the favicon's 11.8u):
+       the text is centred, so the padding absorbs the variation. -->
+  <defs>
+    <linearGradient id="rc-logo-bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#2563eb" />
+      <stop offset="55%" stop-color="#1d4ed8" />
+      <stop offset="100%" stop-color="#1c3461" />
+    </linearGradient>
+  </defs>
+
+  <rect width="227" height="64" rx="14" fill="url(#rc-logo-bg)" />
+
+  <!-- Sport-colour accent, spanning the width of the name exactly as the
+       favicon's stripes span the width of the monogram: the calendar's own
+       swim / bike / run hues (SPORT_COLORS in src/utils/workouts.js), left to
+       right in race order. -->
+  <g opacity="0.9">
+    <rect x="16.2" y="50" width="64.87" height="3.2" rx="1.6" fill="#0ea5e9" />
+    <rect x="81.07" y="50" width="64.87" height="3.2" rx="1.6" fill="#8b5cf6" />
+    <rect x="145.94" y="50" width="64.86" height="3.2" rx="1.6" fill="#22c55e" />
+  </g>
+
+  <text x="113.5" y="38"
+        text-anchor="middle"
+        font-family="system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif"
+        font-size="30"
+        font-weight="700"
+        letter-spacing="-1"
+        fill="#ffffff">RaceCondition</text>
+</svg>

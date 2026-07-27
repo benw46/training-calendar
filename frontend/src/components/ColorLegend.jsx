@@ -144,9 +144,21 @@ export default function ColorLegend({ piOnline = null }) {
 
           <div className="color-legend__divider" />
 
-          <p className="color-legend__credit">
-            This Application has been written by Benjamin Watts with the assistance of Claude Code.
-          </p>
+          <div className="color-legend__credit-row">
+            {/* The app's own mark, straight from the favicon file, so the two
+                can never drift apart. Decorative beside the credit line. */}
+            <img
+              className="color-legend__credit-icon"
+              src="/favicon.svg"
+              alt=""
+              aria-hidden="true"
+              width="28"
+              height="28"
+            />
+            <p className="color-legend__credit">
+              RaceCondition has been written by Benjamin Watts with the assistance of Claude Code.
+            </p>
+          </div>
         </div>,
         document.body
       )}
