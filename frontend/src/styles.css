@@ -1358,8 +1358,21 @@ body {
 
   /* The year chart renders wider than the screen here (see
      yearMatchedPixelWidth in GraphsModal.jsx) so a week is the same size as
-     in the 3-month chart above it, rather than being squeezed to fit. */
+     in the 3-month chart above it, rather than being squeezed to fit. The
+     y-axis strip (WeeklyDurationChart's axisOnly render) sits outside the
+     scrolling half so 0h/4h/8h/etc stay on screen as the chart scrolls. */
+  .graph-year-scroll-wrap {
+    display: flex;
+    align-items: flex-start;
+  }
+
+  .graph-year-scroll-wrap > .weekly-chart {
+    flex-shrink: 0;
+  }
+
   .graph-year-scroll {
+    flex: 1 1 auto;
+    min-width: 0;
     overflow-x: auto;
     -webkit-overflow-scrolling: touch;
   }

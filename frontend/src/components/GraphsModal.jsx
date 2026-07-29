@@ -22,6 +22,9 @@ const CHART_PADDING_RIGHT = 12
 // particular screen's pixel size.
 const YEAR_VIEWBOX_WIDTH_MATCHED = CHART_PADDING_LEFT + CHART_PADDING_RIGHT +
   ((THREE_MO_VIEWBOX_WIDTH - CHART_PADDING_LEFT - CHART_PADDING_RIGHT) / (WEEKS_3MO - 1)) * (WEEKS_YEAR - 1)
+// Fixed pixel width of the non-scrolling y-axis strip pinned beside the
+// phone-mode year chart — just wide enough for "16h"-sized tick labels.
+const AXIS_PANEL_WIDTH = 40
 const TOOLTIP_W = 92
 const TOOLTIP_H = 36
 const PR_SPORTS = [
@@ -282,7 +285,7 @@ function PersonalBestsTable({ records }) {
   )
 }
 
-function WeeklyDurationChart({ points, ariaLabel, width = 340, height = 260, svgRef, boundaryIndex, pixelWidth, pixelHeight }) {
+function WeeklyDurationChart({ points, ariaLabel, width = 340, height = 260, svgRef, boundaryIndex, pixelWidth, pixelHeight, axisOnly = false, showYAxisLabels = true }) {
   const [hoverIndex, setHoverIndex] = useState(null)
 
   const padding = { top: boundaryIndex != null ? 26 : 16, right: CHART_PADDING_RIGHT, bottom: 34, left: CHART_PADDING_LEFT }
@@ -336,6 +339,26 @@ function WeeklyDurationChart({ points, ariaLabel, width = 340, height = 260, svg
   // at the same pixel size as the 3-month chart's rather than being squeezed.
   const fixedSizeStyle = pixelWidth != null ? { width: pixelWidth, height: pixelHeight, maxWidth: 'none' } : undefined
 
+  // A standalone strip of just the y-axis numbers, pinned outside the
+  // scrollable container (see .graph-year-scroll-wrap) so 0h/4h/8h/etc stay
+  // on screen while the full chart beside it scrolls horizontally. Computed
+  // from the same points/height/padding as the real chart, so its tick
+  // positions land exactly level with that chart's gridlines.
+  if (axisOnly) {
+    return (
+      <svg viewBox={`0 0 ${width} ${height}`} className="weekly-chart weekly-chart--axis" style={fixedSizeStyle} aria-hidden="true">
+        {yTicks.map(v => {
+          const y = yAt(v)
+          return (
+            <text key={v} x={width - CHART_PADDING_RIGHT} y={y + 4} textAnchor="end" fontSize="10" fill="#6b7280">
+              {v}h
+            </text>
+          )
+        })}
+      </svg>
+    )
+  }
+
   return (
     <svg ref={svgRef} viewBox={`0 0 ${width} ${height}`} className="weekly-chart" style={fixedSizeStyle} role="img" aria-label={ariaLabel}>
       {yTicks.map(v => {
@@ -344,9 +367,11 @@ function WeeklyDurationChart({ points, ariaLabel, width = 340, height = 260, svg
           <g key={v}>
             <line x1={padding.left} y1={y} x2={width - padding.right} y2={y}
                   stroke="#eaecf0" strokeWidth="1" />
-            <text x={padding.left - 8} y={y + 4} textAnchor="end" fontSize="10" fill="#6b7280">
-              {v}h
-            </text>
+            {showYAxisLabels && (
+              <text x={padding.left - 8} y={y + 4} textAnchor="end" fontSize="10" fill="#6b7280">
+                {v}h
+              </text>
+            )}
           </g>
         )
       })}
@@ -371,7 +396,7 @@ function WeeklyDurationChart({ points, ariaLabel, width = 340, height = 260, svg
           <line x1={xAt(boundaryIndex)} y1={padding.top} x2={xAt(boundaryIndex)} y2={height - padding.bottom}
                 stroke="#9ca3af" strokeWidth="1" strokeDasharray="3 3" opacity="0.6" />
           <text x={xAt(boundaryIndex)} y={padding.top - 10} textAnchor="middle" fontSize="9" fill="#9ca3af">
-            Three months
+            3 Months
           </text>
         </g>
       )}
@@ -771,16 +796,28 @@ export default function GraphsModal({ onClose }) {
             {!errorYear && !weeklyYear && <div className="graph-loading">Loading…</div>}
             {weeklyYear && (isPhone ? (
               threeMoSize ? (
-                <div className="graph-year-scroll">
+                <div className="graph-year-scroll-wrap">
                   <WeeklyDurationChart
                     points={weeklyYear}
-                    width={YEAR_VIEWBOX_WIDTH_MATCHED}
+                    width={AXIS_PANEL_WIDTH}
                     height={260}
-                    pixelWidth={yearMatchedPixelWidth}
+                    pixelWidth={AXIS_PANEL_WIDTH}
                     pixelHeight={threeMoSize.height}
                     boundaryIndex={YEAR_BOUNDARY_INDEX}
-                    ariaLabel="Total workout duration per week, in hours, over the last year"
+                    axisOnly
                   />
+                  <div className="graph-year-scroll">
+                    <WeeklyDurationChart
+                      points={weeklyYear}
+                      width={YEAR_VIEWBOX_WIDTH_MATCHED}
+                      height={260}
+                      pixelWidth={yearMatchedPixelWidth}
+                      pixelHeight={threeMoSize.height}
+                      boundaryIndex={YEAR_BOUNDARY_INDEX}
+                      showYAxisLabels={false}
+                      ariaLabel="Total workout duration per week, in hours, over the last year"
+                    />
+                  </div>
                 </div>
               ) : (
                 <div className="graph-loading">Loading…</div>
