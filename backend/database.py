@@ -34,6 +34,13 @@ SCHEMA_SQL = """
     -- ever reads/writes it as a whole (no per-exercise SQL querying needed).
     ALTER TABLE workouts ADD COLUMN IF NOT EXISTS gym_exercises TEXT;
 
+    -- Run/Bike/Swim's structured-interval breakdown: JSON-encoded array of
+    -- {name, distance, reps} — same storage approach as gym_exercises above,
+    -- one column per sport since a workout is only ever one of them.
+    ALTER TABLE workouts ADD COLUMN IF NOT EXISTS run_exercises TEXT;
+    ALTER TABLE workouts ADD COLUMN IF NOT EXISTS bike_exercises TEXT;
+    ALTER TABLE workouts ADD COLUMN IF NOT EXISTS swim_exercises TEXT;
+
     -- completed was write-only (set on insert/Garmin sync, never read —
     -- actual card status is derived from planned vs. actual numbers
     -- instead) and has been fully removed from the model/code; drop it

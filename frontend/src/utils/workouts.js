@@ -86,6 +86,26 @@ export function fmtExercise(ex) {
   return detail ? `${ex.name} — ${detail}` : ex.name
 }
 
+// A run/bike/swim interval's distance is typed as a bare number with no
+// unit picker, so it's read as kilometers up to a plausible single-rep
+// distance and as meters above that (nobody reps 21+ actual kilometers) —
+// the number itself is never converted, only the label shown beside it.
+export function distanceExerciseUnit(distance) {
+  if (distance == null || distance === '') return 'km'
+  return Number(distance) > 20 ? 'm' : 'km'
+}
+
+// Mirrors fmtExercise above, but a run/bike/swim interval has only reps ×
+// distance — no sets/weight/bodyweight/time to fold in.
+export function fmtDistanceExercise(ex) {
+  const unit = distanceExerciseUnit(ex.distance)
+  const detail = ex.reps && ex.distance != null ? `${ex.reps}×${ex.distance}${unit}`
+    : ex.distance != null ? `${ex.distance}${unit}`
+    : ex.reps ? `${ex.reps} reps`
+    : null
+  return detail ? `${ex.name} — ${detail}` : ex.name
+}
+
 export function listToByDate(list) {
   const byDate = {}
   for (const w of list) {

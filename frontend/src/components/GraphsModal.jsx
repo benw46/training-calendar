@@ -346,7 +346,7 @@ function WeeklyDurationChart({ points, ariaLabel, width = 340, height = 260, svg
   // positions land exactly level with that chart's gridlines.
   if (axisOnly) {
     return (
-      <svg viewBox={`0 0 ${width} ${height}`} className="weekly-chart weekly-chart--axis" style={fixedSizeStyle} aria-hidden="true">
+      <svg viewBox={`0 0 ${width} ${height}`} className="weekly-chart" style={fixedSizeStyle} aria-hidden="true">
         {yTicks.map(v => {
           const y = yAt(v)
           return (

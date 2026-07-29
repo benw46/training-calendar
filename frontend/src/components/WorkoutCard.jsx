@@ -1,5 +1,5 @@
 import SportIcon from './SportIcon'
-import { getCardStatus, fmtDuration, fmtDistance, fmtExercise, STATUS_BAR_COLOR } from '../utils/workouts'
+import { getCardStatus, fmtDuration, fmtDistance, fmtExercise, fmtDistanceExercise, STATUS_BAR_COLOR } from '../utils/workouts'
 
 export default function WorkoutCard({
   workout, today, onClick,
@@ -12,6 +12,9 @@ export default function WorkoutCard({
   // Strength has no meaningful distance, so that field never shows for it —
   // just duration, same layout as every other sport minus the distance column.
   const isStrength = workout.sport === 'strength'
+  // Only one of these is ever populated for a given workout (its sport
+  // picks which) — see IntervalExercise in backend/models.py.
+  const distanceExercises = workout.run_exercises ?? workout.bike_exercises ?? workout.swim_exercises
 
   const actualDur = fmtDuration(workout.actual_duration_minutes)
   const actualDist = isStrength ? null : fmtDistance(workout.actual_distance_km)
@@ -69,6 +72,14 @@ export default function WorkoutCard({
           <ul className="workout-card__exercises">
             {workout.gym_exercises.map((ex, i) => (
               <li key={i}>{fmtExercise(ex)}</li>
+            ))}
+          </ul>
+        )}
+
+        {distanceExercises?.length > 0 && (
+          <ul className="workout-card__exercises">
+            {distanceExercises.map((ex, i) => (
+              <li key={i}>{fmtDistanceExercise(ex)}</li>
             ))}
           </ul>
         )}

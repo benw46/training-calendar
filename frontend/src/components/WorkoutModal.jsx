@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { api } from '../api/workouts'
 import { addWeeks, toYMD } from '../utils/dates'
-import { fmtRepsTime, repsTimeUnit } from '../utils/workouts'
+import { fmtRepsTime, repsTimeUnit, distanceExerciseUnit } from '../utils/workouts'
 
 const SPORTS = ['swim', 'bike', 'run', 'strength', 'other', 'note', 'event', 'period']
 // 'strength' is the sport's stable internal/DB value; "Gym" is only how it's
@@ -11,6 +11,7 @@ const SPORT_LABELS = { strength: 'Gym' }
 const MAX_DURATION_MINUTES = 100 * 60
 const MAX_DISTANCE_KM = 500
 const EMPTY_EXERCISE = { name: '', sets: '', reps: '', weight: '', bodyweight: false, is_time: false }
+const EMPTY_DISTANCE_EXERCISE = { name: '', distance: '', reps: '' }
 
 // With Time checked the Reps box holds m:ss / mm:ss instead of a count. It
 // still leaves here as a plain integer — total seconds — so `reps` is one
@@ -110,6 +111,19 @@ function initExercises(gymExercises) {
   }))
 }
 
+// Shared by run/bike/swim — all three store their interval breakdown as the
+// same {name, distance, reps} shape, just in their own sport-specific
+// column (see IntervalExercise in backend/models.py), since a workout is
+// only ever one sport at a time.
+function initDistanceExercises(exercises) {
+  if (!exercises || !exercises.length) return []
+  return exercises.map(ex => ({
+    name:     ex.name ?? '',
+    distance: ex.distance ?? '',
+    reps:     ex.reps ?? '',
+  }))
+}
+
 function initForm(workout, initialDate) {
   if (workout) {
     return {
@@ -124,6 +138,10 @@ function initForm(workout, initialDate) {
       period_plan:        'build-3',
       is_brick:           workout.is_brick ?? false,
       gym_exercises:      initExercises(workout.gym_exercises),
+      // Only one of these three is ever populated for a given workout (its
+      // sport picks which), so whichever isn't null/undefined is the one to
+      // seed the shared editable list with.
+      distance_exercises: initDistanceExercises(workout.run_exercises ?? workout.bike_exercises ?? workout.swim_exercises),
     }
   }
   return {
@@ -138,6 +156,7 @@ function initForm(workout, initialDate) {
     period_plan:      'build-3',
     is_brick:         false,
     gym_exercises:    [],
+    distance_exercises: [],
   }
 }
 
@@ -157,6 +176,18 @@ function buildGymExercises(rows) {
     }))
 }
 
+// Mirrors buildGymExercises above: drops fully-empty rows, coerces
+// distance/reps to numbers (or null) for the API.
+function buildDistanceExercises(rows) {
+  return rows
+    .filter(ex => ex.name.trim() || ex.distance !== '' || ex.reps !== '')
+    .map(ex => ({
+      name:     ex.name.trim(),
+      distance: ex.distance !== '' ? parseFloat(ex.distance) : null,
+      reps:     ex.reps !== '' ? parseInt(ex.reps, 10) : null,
+    }))
+}
+
 export default function WorkoutModal({ workout, initialDate, onClose, onSaved, onDeleted }) {
   const isEdit = Boolean(workout)
   const [form, setForm] = useState(() => initForm(workout, initialDate))
@@ -166,11 +197,19 @@ export default function WorkoutModal({ workout, initialDate, onClose, onSaved, o
   const [copying, setCopying] = useState(false)
   const [submitError, setSubmitError] = useState(null)
   const [draggedExerciseIndex, setDraggedExerciseIndex] = useState(null)
+  const [draggedDistanceExerciseIndex, setDraggedDistanceExerciseIndex] = useState(null)
 
   const isNote = form.sport === 'note'
   const isEvent = form.sport === 'event'
   const isNoteLike = isNote || isEvent
   const isStrength = form.sport === 'strength'
+  const isRun = form.sport === 'run'
+  const isBike = form.sport === 'bike'
+  const isSwim = form.sport === 'swim'
+  // Run/Bike/Swim all get the same interval-breakdown "Exercises" table —
+  // see IntervalExercise in backend/models.py — just stored in their own
+  // sport-specific column.
+  const isDistanceExercisesSport = isRun || isBike || isSwim
   const isPeriod = form.sport === 'period'
   // Swim and Bike are the two disciplines a brick transitions out of
   // (mirroring triathlon's T1/T2) — see DayColumn's BRICK_NEXT_SPORT.
@@ -286,6 +325,48 @@ export default function WorkoutModal({ workout, initialDate, onClose, onSaved, o
     setDraggedExerciseIndex(null)
   }
 
+  function addDistanceExercise() {
+    setForm(f => ({ ...f, distance_exercises: [...f.distance_exercises, { ...EMPTY_DISTANCE_EXERCISE }] }))
+  }
+
+  function setDistanceExercise(index, field, value) {
+    setForm(f => {
+      const rows = [...f.distance_exercises]
+      rows[index] = { ...rows[index], [field]: value }
+      return { ...f, distance_exercises: rows }
+    })
+  }
+
+  function removeDistanceExercise(index) {
+    setForm(f => ({ ...f, distance_exercises: f.distance_exercises.filter((_, i) => i !== index) }))
+  }
+
+  function handleDistanceExerciseDragStart(e, index) {
+    e.dataTransfer.effectAllowed = 'move'
+    e.dataTransfer.setData('text/plain', String(index))
+    setDraggedDistanceExerciseIndex(index)
+  }
+
+  function handleDistanceExerciseDragOver(e, index) {
+    e.preventDefault() // required to allow a drop
+    if (draggedDistanceExerciseIndex === null || draggedDistanceExerciseIndex === index) return
+    setForm(f => {
+      const rows = [...f.distance_exercises]
+      const [moved] = rows.splice(draggedDistanceExerciseIndex, 1)
+      rows.splice(index, 0, moved)
+      return { ...f, distance_exercises: rows }
+    })
+    setDraggedDistanceExerciseIndex(index)
+  }
+
+  function handleDistanceExerciseDrop(e) {
+    e.preventDefault() // the reorder already happened live in dragover — this just accepts the drop
+  }
+
+  function handleDistanceExerciseDragEnd() {
+    setDraggedDistanceExerciseIndex(null)
+  }
+
   function validateDuration(str) {
     if (!str) return null
     const parsed = parseDuration(str)
@@ -397,6 +478,9 @@ export default function WorkoutModal({ workout, initialDate, onClose, onSaved, o
       actual_distance_km:      isNoteLike || isStrength ? null : (values.actual_distance !== '' ? parseFloat(values.actual_distance) : null),
       is_brick:                isBrickable ? values.is_brick : false,
       gym_exercises:            isStrength ? buildGymExercises(values.gym_exercises) : null,
+      run_exercises:            isRun  ? buildDistanceExercises(values.distance_exercises) : null,
+      bike_exercises:           isBike ? buildDistanceExercises(values.distance_exercises) : null,
+      swim_exercises:           isSwim ? buildDistanceExercises(values.distance_exercises) : null,
     }
 
     setSaving(true)
@@ -436,6 +520,9 @@ export default function WorkoutModal({ workout, initialDate, onClose, onSaved, o
       actual_distance_km:       null,
       is_brick:                 isBrickable ? values.is_brick : false,
       gym_exercises:            isStrength ? buildGymExercises(values.gym_exercises) : null,
+      run_exercises:            isRun  ? buildDistanceExercises(values.distance_exercises) : null,
+      bike_exercises:           isBike ? buildDistanceExercises(values.distance_exercises) : null,
+      swim_exercises:           isSwim ? buildDistanceExercises(values.distance_exercises) : null,
     }
 
     setCopying(true)
@@ -677,6 +764,102 @@ export default function WorkoutModal({ workout, initialDate, onClose, onSaved, o
                   </table>
                 </div>
                 <button type="button" className="btn btn--secondary gym-exercises__add" onClick={addExercise}>
+                  + Add Exercise
+                </button>
+              </div>
+            </div>
+          )}
+
+          {isDistanceExercisesSport && (
+            <div className="form-row">
+              <label className="form-label">Exercises</label>
+              <div className="gym-exercises">
+                <div className="gym-exercises__scroll">
+                  <table className="gym-exercises__table">
+                    <thead>
+                      <tr>
+                        <th></th>
+                        <th>Activity</th>
+                        <th>Distance</th>
+                        <th>Reps</th>
+                        <th></th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {form.distance_exercises.map((ex, i) => (
+                        <tr
+                          key={i}
+                          className={draggedDistanceExerciseIndex === i ? 'gym-exercises__row--dragging' : ''}
+                          onDragOver={e => handleDistanceExerciseDragOver(e, i)}
+                          onDrop={handleDistanceExerciseDrop}
+                        >
+                          <td className="gym-exercises__td--center">
+                            <span
+                              className="gym-exercises__drag-handle"
+                              draggable
+                              onDragStart={e => handleDistanceExerciseDragStart(e, i)}
+                              onDragEnd={handleDistanceExerciseDragEnd}
+                              aria-label="Drag to reorder"
+                              title="Drag to reorder"
+                            >
+                              <svg viewBox="0 0 10 16" width="10" height="16" aria-hidden="true">
+                                <circle cx="3" cy="3" r="1.3" fill="currentColor" />
+                                <circle cx="7" cy="3" r="1.3" fill="currentColor" />
+                                <circle cx="3" cy="8" r="1.3" fill="currentColor" />
+                                <circle cx="7" cy="8" r="1.3" fill="currentColor" />
+                                <circle cx="3" cy="13" r="1.3" fill="currentColor" />
+                                <circle cx="7" cy="13" r="1.3" fill="currentColor" />
+                              </svg>
+                            </span>
+                          </td>
+                          <td className="gym-exercises__td--name">
+                            <textarea
+                              rows={1}
+                              className="form-input gym-exercises__input gym-exercises__input--name"
+                              placeholder="e.g. Strides"
+                              value={ex.name}
+                              ref={autoResizeTextarea}
+                              onChange={e => { setDistanceExercise(i, 'name', e.target.value); autoResizeTextarea(e.target) }}
+                            />
+                          </td>
+                          <td>
+                            <div className="gym-exercises__weight-cell">
+                              <input
+                                type="number"
+                                min="0"
+                                step="0.1"
+                                className="form-input gym-exercises__input gym-exercises__input--distance"
+                                value={ex.distance}
+                                onChange={e => setDistanceExercise(i, 'distance', e.target.value)}
+                              />
+                              <span className="gym-exercises__weight-unit">{distanceExerciseUnit(ex.distance)}</span>
+                            </div>
+                          </td>
+                          <td>
+                            <input
+                              type="number"
+                              min="0"
+                              className="form-input gym-exercises__input gym-exercises__input--num"
+                              value={ex.reps}
+                              onChange={e => setDistanceExercise(i, 'reps', e.target.value)}
+                            />
+                          </td>
+                          <td>
+                            <button
+                              type="button"
+                              className="gym-exercises__remove"
+                              onClick={() => removeDistanceExercise(i)}
+                              aria-label="Remove exercise"
+                            >
+                              ✕
+                            </button>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+                <button type="button" className="btn btn--secondary gym-exercises__add" onClick={addDistanceExercise}>
                   + Add Exercise
                 </button>
               </div>

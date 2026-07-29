@@ -112,6 +112,9 @@ export default function SummaryPanel({ workoutsByDate, days, today, onReordered 
           description: w.description,
           is_brick: w.is_brick,
           gym_exercises: w.gym_exercises,
+          run_exercises: w.run_exercises,
+          bike_exercises: w.bike_exercises,
+          swim_exercises: w.swim_exercises,
         })
       } catch {
         failed += 1

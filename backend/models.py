@@ -28,6 +28,19 @@ class GymExercise(BaseModel):
     is_time: bool = False
 
 
+# A Run/Bike/Swim's structured-interval breakdown (e.g. "6 x Strides,
+# 0.1km") — same per-exercise-row idea as GymExercise, but reps/sets/weight/
+# bodyweight/time don't apply to a distance-based interval, so it only
+# carries a distance alongside the shared name/reps fields. One shared shape
+# across all three sports, but stored per-sport (run_exercises/
+# bike_exercises/swim_exercises below) since a workout is only ever one
+# sport at a time — same reasoning as gym_exercises being its own column.
+class IntervalExercise(BaseModel):
+    name: str
+    distance: Optional[float] = None  # km
+    reps: Optional[int] = None
+
+
 class WorkoutBase(BaseModel):
     date: str  # YYYY-MM-DD
     sport: Sport
@@ -40,6 +53,9 @@ class WorkoutBase(BaseModel):
     description: Optional[str] = None
     is_brick: bool = False
     gym_exercises: Optional[list[GymExercise]] = None
+    run_exercises: Optional[list[IntervalExercise]] = None
+    bike_exercises: Optional[list[IntervalExercise]] = None
+    swim_exercises: Optional[list[IntervalExercise]] = None
 
 
 class WorkoutCreate(WorkoutBase):
@@ -58,6 +74,9 @@ class WorkoutUpdate(BaseModel):
     sort_order: Optional[int] = None
     is_brick: Optional[bool] = None
     gym_exercises: Optional[list[GymExercise]] = None
+    run_exercises: Optional[list[IntervalExercise]] = None
+    bike_exercises: Optional[list[IntervalExercise]] = None
+    swim_exercises: Optional[list[IntervalExercise]] = None
 
 
 class WorkoutOut(WorkoutBase):
@@ -80,6 +99,9 @@ class WorkoutOut(WorkoutBase):
             sort_order=row["sort_order"],
             is_brick=bool(row["is_brick"]),
             gym_exercises=json.loads(row["gym_exercises"]) if row["gym_exercises"] else None,
+            run_exercises=json.loads(row["run_exercises"]) if row["run_exercises"] else None,
+            bike_exercises=json.loads(row["bike_exercises"]) if row["bike_exercises"] else None,
+            swim_exercises=json.loads(row["swim_exercises"]) if row["swim_exercises"] else None,
         )
 
 

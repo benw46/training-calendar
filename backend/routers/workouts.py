@@ -8,6 +8,15 @@ from models import WorkoutCreate, WorkoutUpdate, WorkoutOut
 
 router = APIRouter(prefix="/workouts", tags=["workouts"], dependencies=[Depends(require_auth)])
 
+# The three distance-sport interval-breakdown columns, all sharing the same
+# IntervalExercise shape and JSON-text storage as gym_exercises — see the
+# comment on IntervalExercise in models.py.
+INTERVAL_EXERCISE_FIELDS = ("run_exercises", "bike_exercises", "swim_exercises")
+
+
+def serialize_exercises(exercises):
+    return json.dumps([e.model_dump() for e in exercises]) if exercises else None
+
 
 @router.get("/", response_model=list[WorkoutOut])
 def list_workouts(start: str, end: str):
@@ -32,17 +41,17 @@ def get_next_events(limit: int = 3):
 
 @router.post("/", response_model=WorkoutOut, status_code=201)
 def create_workout(body: WorkoutCreate):
-    gym_exercises = (
-        json.dumps([e.model_dump() for e in body.gym_exercises])
-        if body.gym_exercises else None
-    )
+    gym_exercises = serialize_exercises(body.gym_exercises)
+    run_exercises = serialize_exercises(body.run_exercises)
+    bike_exercises = serialize_exercises(body.bike_exercises)
+    swim_exercises = serialize_exercises(body.swim_exercises)
     with get_conn() as conn:
         cur = conn.execute(
             """INSERT INTO workouts
                (date, sport, name, planned_duration_minutes, planned_distance_km,
                 actual_duration_minutes, actual_distance_km, description, is_brick,
-                gym_exercises)
-               VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                gym_exercises, run_exercises, bike_exercises, swim_exercises)
+               VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                RETURNING id""",
             (
                 body.date,
@@ -55,6 +64,9 @@ def create_workout(body: WorkoutCreate):
                 body.description,
                 body.is_brick,
                 gym_exercises,
+                run_exercises,
+                bike_exercises,
+                swim_exercises,
             ),
         )
         new_id = cur.fetchone()["id"]
@@ -80,6 +92,10 @@ def update_workout(workout_id: int, body: WorkoutUpdate):
 
     if "gym_exercises" in updates:
         updates["gym_exercises"] = json.dumps(updates["gym_exercises"]) if updates["gym_exercises"] else None
+
+    for field in INTERVAL_EXERCISE_FIELDS:
+        if field in updates:
+            updates[field] = json.dumps(updates[field]) if updates[field] else None
 
     fields = ", ".join(f"{k} = ?" for k in updates)
     values = list(updates.values()) + [workout_id]

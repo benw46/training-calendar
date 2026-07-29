@@ -1899,6 +1899,15 @@ body {
   flex-shrink: 0;
 }
 
+/* Twice .gym-exercises__input--weight's width — a run interval's distance
+   is typically typed with a decimal (e.g. "0.4"), needing more room than
+   weight's bare integer. */
+.gym-exercises__input--distance {
+  width: 92px;
+  text-align: right;
+  flex-shrink: 0;
+}
+
 /* Wider than the plain reps box (--num) because "mm:ss" is five characters
    where a rep count is one or two. */
 .gym-exercises__input--time {

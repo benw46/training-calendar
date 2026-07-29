@@ -49,39 +49,51 @@ const MOBILE_BREAKPOINT = 700
 // that's neither.
 const HEADER_DIVIDER_SLACK_THRESHOLD = 8
 
-function useHeaderEndSlack(isMobile) {
-  const controlsRef = useRef(null)
-  const endRef = useRef(null)
+function useHeaderEndSlack() {
+  // Plain element refs (read inside recompute/attach below) rather than the
+  // objects returned to callers — callers get the *callback* versions
+  // further down instead.
+  const controlsElRef = useRef(null)
+  const endElRef = useRef(null)
+  const observerRef = useRef(null)
   const [hasSlack, setHasSlack] = useState(true)
 
-  useEffect(() => {
-    // The mobile layout doesn't render .app-header__controls/.app-header__end
-    // at all (a separately-structured header, see App()) — those elements
-    // unmount/remount as isMobile flips, so this must re-run then to
-    // re-attach to whichever pair is currently in the DOM rather than only
-    // observing whatever existed on first mount.
-    const controlsEl = controlsRef.current
-    const endEl = endRef.current
+  // clientWidth vs scrollWidth doesn't work here: the first child's
+  // margin-left: auto absorbs free space rather than overflowing, so
+  // scrollWidth just tracks clientWidth right back down and never reveals
+  // how much slack there actually was. Summing each child's own offsetWidth
+  // (unaffected by its own margin) plus the flex gaps gives the box's true
+  // content width independent of however much margin is currently applied —
+  // which also keeps this reversible, since it doesn't get stuck reading
+  // "no slack" just because a previous measurement forced the margin to 0.
+  const recompute = useCallback(() => {
+    const controlsEl = controlsElRef.current
+    const endEl = endElRef.current
     if (!controlsEl || !endEl) return
 
-    // clientWidth vs scrollWidth doesn't work here: the first child's
-    // margin-left: auto absorbs free space rather than overflowing, so
-    // scrollWidth just tracks clientWidth right back down and never
-    // reveals how much slack there actually was. Summing each child's own
-    // offsetWidth (unaffected by its own margin) plus the flex gaps gives
-    // the box's true content width independent of however much margin is
-    // currently applied — which also keeps this reversible, since it
-    // doesn't get stuck reading "no slack" just because a previous
-    // measurement forced the margin to 0.
-    const recompute = () => {
-      const kids = Array.from(endEl.children)
-      const gap = parseFloat(getComputedStyle(endEl).columnGap) || 0
-      const contentWidth = kids.reduce((sum, k) => sum + k.offsetWidth, 0) + gap * (kids.length - 1)
-      const slack = endEl.clientWidth - contentWidth
-      setHasSlack(slack > HEADER_DIVIDER_SLACK_THRESHOLD)
-    }
+    const kids = Array.from(endEl.children)
+    const gap = parseFloat(getComputedStyle(endEl).columnGap) || 0
+    const contentWidth = kids.reduce((sum, k) => sum + k.offsetWidth, 0) + gap * (kids.length - 1)
+    const slack = endEl.clientWidth - contentWidth
+    setHasSlack(slack > HEADER_DIVIDER_SLACK_THRESHOLD)
+  }, [])
 
-    recompute()
+  // (Re)creates the observer once both elements are attached. Called from
+  // each ref callback below rather than from a useEffect keyed on isMobile:
+  // the mobile/desktop headers are gated behind the async session check in
+  // App(), so on first load the desktop header doesn't exist in the DOM yet
+  // when App first mounts — an effect keyed on isMobile alone would fire
+  // once against null refs (and set up nothing) and then never fire again,
+  // since isMobile itself doesn't change once the session resolves and the
+  // real header mounts. Ref callbacks instead re-fire exactly when the DOM
+  // nodes themselves change, for whatever reason.
+  const attach = useCallback(() => {
+    observerRef.current?.disconnect()
+    observerRef.current = null
+    const controlsEl = controlsElRef.current
+    const endEl = endElRef.current
+    if (!controlsEl || !endEl) return
+
     // Observes both: endEl's own box changes with window/grid resizes,
     // while controlsEl's box changes with the event banner's cycling text
     // (its "auto" grid track sizes to content) — either can change how
@@ -89,8 +101,14 @@ function useHeaderEndSlack(isMobile) {
     const observer = new ResizeObserver(recompute)
     observer.observe(controlsEl)
     observer.observe(endEl)
-    return () => observer.disconnect()
-  }, [isMobile])
+    observerRef.current = observer
+    recompute()
+  }, [recompute])
+
+  const controlsRef = useCallback(node => { controlsElRef.current = node; attach() }, [attach])
+  const endRef = useCallback(node => { endElRef.current = node; attach() }, [attach])
+
+  useEffect(() => () => observerRef.current?.disconnect(), [])
 
   return { controlsRef, endRef, hasSlack }
 }
@@ -113,7 +131,7 @@ function useIsMobile() {
 
 export default function App() {
   const isMobile = useIsMobile()
-  const { controlsRef, endRef, hasSlack } = useHeaderEndSlack(isMobile)
+  const { controlsRef, endRef, hasSlack } = useHeaderEndSlack()
 
   // undefined = still checking for an existing session; null = signed out
   const [session, setSession] = useState(undefined)
