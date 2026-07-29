@@ -1287,6 +1287,29 @@ body {
   margin-bottom: 8px;
 }
 
+.sport-legend {
+  display: flex;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 4px 12px;
+  margin-bottom: 8px;
+}
+
+.sport-legend__item {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 10px;
+  color: #6b7280;
+}
+
+.sport-legend__dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
 .graph-loading {
   padding: 40px 0;
   text-align: center;
@@ -1331,6 +1354,18 @@ body {
   .graph-panel--chart-year {
     grid-column: 1;
     grid-row: 3;
+  }
+
+  /* The year chart renders wider than the screen here (see
+     yearMatchedPixelWidth in GraphsModal.jsx) so a week is the same size as
+     in the 3-month chart above it, rather than being squeezed to fit. */
+  .graph-year-scroll {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .graph-year-scroll .weekly-chart {
+    flex-shrink: 0;
   }
 }
 

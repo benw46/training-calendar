@@ -1,18 +1,45 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { api } from '../api/workouts'
-import { listToByDate } from '../utils/workouts'
-import { weekActualTotal } from '../utils/weeklyTotals'
+import { listToByDate, SPORT_COLORS } from '../utils/workouts'
+import { weekActualTotal, weekActualTotalsBySport } from '../utils/weeklyTotals'
 import { getMondayOf, addWeeks, addDays, toYMD } from '../utils/dates'
 
 const WEEKS_3MO  = 13 // ~3 months of weekly buckets, including the current week
 const WEEKS_YEAR = 52
+// Where the last-three-months window starts within the year chart's 52
+// points, expressed as a fractional index so the marker line sits between
+// two weekly dots rather than through one.
+const YEAR_BOUNDARY_INDEX = WEEKS_YEAR - WEEKS_3MO - 0.5
 const THREE_MO_VIEWBOX_WIDTH = 340 // must match the default `width` used for the 3-month chart below
+// Shared with WeeklyDurationChart's own `padding` — pulled out here so the
+// phone-mode width math below can reproduce its per-point x spacing exactly.
+const CHART_PADDING_LEFT = 38
+const CHART_PADDING_RIGHT = 12
+// Phone mode: rather than squeezing all 52 weeks into the same on-screen
+// width as the 3-month chart's 13, extend that chart's per-week spacing out
+// to 52 weeks and let the year chart scroll horizontally — so a week reads
+// as the same size in both charts. A viewBox-unit width, independent of any
+// particular screen's pixel size.
+const YEAR_VIEWBOX_WIDTH_MATCHED = CHART_PADDING_LEFT + CHART_PADDING_RIGHT +
+  ((THREE_MO_VIEWBOX_WIDTH - CHART_PADDING_LEFT - CHART_PADDING_RIGHT) / (WEEKS_3MO - 1)) * (WEEKS_YEAR - 1)
 const TOOLTIP_W = 92
 const TOOLTIP_H = 36
 const PR_SPORTS = [
   { key: 'swim', label: 'Swim' },
   { key: 'bike', label: 'Bike' },
   { key: 'run',  label: 'Run'  },
+]
+
+// Stack order (bottom to top) for the by-sport chart, and the shared source
+// of truth for its legend. Colors match SportIcon's stripes so a sport reads
+// the same way everywhere in the app; 'gym' groups 'strength' as
+// weekActualTotalsBySport does.
+const SPORT_STACK = [
+  { key: 'swim',  label: 'Swim',  color: SPORT_COLORS.swim },
+  { key: 'bike',  label: 'Bike',  color: SPORT_COLORS.bike },
+  { key: 'run',   label: 'Run',   color: SPORT_COLORS.run },
+  { key: 'gym',   label: 'Gym',   color: SPORT_COLORS.strength },
+  { key: 'other', label: 'Other', color: SPORT_COLORS.other },
 ]
 
 function buildWeeklyPoints(byDate, startMonday, weekCount) {
@@ -22,6 +49,25 @@ function buildWeeklyPoints(byDate, startMonday, weekCount) {
     return {
       label: monday.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
       hours: Math.round((minutes / 60) * 10) / 10,
+    }
+  })
+}
+
+function buildWeeklySportPoints(byDate, startMonday, weekCount) {
+  return Array.from({ length: weekCount }, (_, i) => {
+    const monday = addWeeks(startMonday, i)
+    const minutesBySport = weekActualTotalsBySport(byDate, monday)
+    const bySport = {}
+    let total = 0
+    for (const { key } of SPORT_STACK) {
+      const hours = Math.round((minutesBySport[key] / 60) * 10) / 10
+      bySport[key] = hours
+      total += hours
+    }
+    return {
+      label: monday.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
+      bySport,
+      total: Math.round(total * 10) / 10,
     }
   })
 }
@@ -236,10 +282,10 @@ function PersonalBestsTable({ records }) {
   )
 }
 
-function WeeklyDurationChart({ points, ariaLabel, width = 340, height = 260, svgRef }) {
+function WeeklyDurationChart({ points, ariaLabel, width = 340, height = 260, svgRef, boundaryIndex, pixelWidth, pixelHeight }) {
   const [hoverIndex, setHoverIndex] = useState(null)
 
-  const padding = { top: 16, right: 12, bottom: 34, left: 38 }
+  const padding = { top: boundaryIndex != null ? 26 : 16, right: CHART_PADDING_RIGHT, bottom: 34, left: CHART_PADDING_LEFT }
   const innerW = width - padding.left - padding.right
   const innerH = height - padding.top - padding.bottom
 
@@ -284,8 +330,14 @@ function WeeklyDurationChart({ points, ariaLabel, width = 340, height = 260, svg
   const pointCy = hovered ? yAt(hovered.hours) : 0
   const tooltipTop = pointCy - TOOLTIP_H - 12 < 2 ? pointCy + 12 : pointCy - TOOLTIP_H - 12
 
+  // Normally width:100% (from .weekly-chart) lets the SVG shrink to fit its
+  // container. Phone mode's year chart instead needs a fixed on-screen size
+  // — wider than the container, scrolling horizontally — so its weeks render
+  // at the same pixel size as the 3-month chart's rather than being squeezed.
+  const fixedSizeStyle = pixelWidth != null ? { width: pixelWidth, height: pixelHeight, maxWidth: 'none' } : undefined
+
   return (
-    <svg ref={svgRef} viewBox={`0 0 ${width} ${height}`} className="weekly-chart" role="img" aria-label={ariaLabel}>
+    <svg ref={svgRef} viewBox={`0 0 ${width} ${height}`} className="weekly-chart" style={fixedSizeStyle} role="img" aria-label={ariaLabel}>
       {yTicks.map(v => {
         const y = yAt(v)
         return (
@@ -313,6 +365,16 @@ function WeeklyDurationChart({ points, ariaLabel, width = 340, height = 260, svg
           </text>
         )
       })}
+
+      {boundaryIndex != null && (
+        <g>
+          <line x1={xAt(boundaryIndex)} y1={padding.top} x2={xAt(boundaryIndex)} y2={height - padding.bottom}
+                stroke="#9ca3af" strokeWidth="1" strokeDasharray="3 3" opacity="0.6" />
+          <text x={xAt(boundaryIndex)} y={padding.top - 10} textAnchor="middle" fontSize="9" fill="#9ca3af">
+            Three months
+          </text>
+        </g>
+      )}
 
       <path d={linePath} fill="none" stroke="#2563eb" strokeWidth="2.5"
             strokeLinejoin="round" strokeLinecap="round" />
@@ -370,8 +432,162 @@ function WeeklyDurationChart({ points, ariaLabel, width = 340, height = 260, svg
   )
 }
 
+function WeeklyDurationBySportChart({ points, ariaLabel, width = 340, height = 260, svgRef }) {
+  const [hoverIndex, setHoverIndex] = useState(null)
+
+  const padding = { top: 16, right: 12, bottom: 34, left: 38 }
+  const innerW = width - padding.left - padding.right
+  const innerH = height - padding.top - padding.bottom
+
+  const MIN_PX_PER_LABEL = 42
+  const labelStep = Math.max(1, Math.ceil((points.length * MIN_PX_PER_LABEL) / innerW))
+  const lastIndex = points.length - 1
+  function shouldShowLabel(i) {
+    if (i === lastIndex) return true
+    if (i % labelStep !== 0) return false
+    return lastIndex - i >= labelStep
+  }
+
+  const maxTotal = Math.max(1, ...points.map(p => p.total))
+  const yMax = Math.max(2, Math.ceil(maxTotal / 2) * 2)
+
+  // Weeks are discrete bands here (bars), not point positions on a line —
+  // each gets an equal-width slot and the bar is centered within it.
+  const bandStep = points.length > 0 ? innerW / points.length : 0
+  const barWidth = Math.min(28, bandStep * 0.6)
+  const xBandCenter = i => padding.left + bandStep * (i + 0.5)
+  const yAt = h => padding.top + innerH - (h / yMax) * innerH
+
+  const yTickCount = 4
+  const yTicks = Array.from({ length: yTickCount + 1 }, (_, i) => Math.round((yMax / yTickCount) * i))
+
+  const hovered = hoverIndex != null ? points[hoverIndex] : null
+  const hoveredSegments = hovered ? SPORT_STACK.filter(s => (hovered.bySport[s.key] ?? 0) > 0) : []
+
+  // The tooltip lists every sport that had time this week (plus a total
+  // row), so — unlike the single-value tooltip above — its height depends on
+  // how many rows that turns out to be.
+  const TOOLTIP_ROW_H = 13
+  const TOOLTIP_HEADER_H = 16
+  const sportTooltipW = 106
+  const sportTooltipH = hovered ? TOOLTIP_HEADER_H + (hoveredSegments.length + 1) * TOOLTIP_ROW_H + 6 : 0
+
+  const tooltipCx = hoverIndex != null
+    ? Math.min(Math.max(xBandCenter(hoverIndex), padding.left + sportTooltipW / 2), width - padding.right - sportTooltipW / 2)
+    : 0
+  const barTopY = hovered ? yAt(hovered.total) : 0
+  const tooltipTop = barTopY - sportTooltipH - 12 < 2 ? barTopY + 12 : barTopY - sportTooltipH - 12
+
+  return (
+    <svg ref={svgRef} viewBox={`0 0 ${width} ${height}`} className="weekly-chart" role="img" aria-label={ariaLabel}>
+      {yTicks.map(v => {
+        const y = yAt(v)
+        return (
+          <g key={v}>
+            <line x1={padding.left} y1={y} x2={width - padding.right} y2={y}
+                  stroke="#eaecf0" strokeWidth="1" />
+            <text x={padding.left - 8} y={y + 4} textAnchor="end" fontSize="10" fill="#6b7280">
+              {v}h
+            </text>
+          </g>
+        )
+      })}
+
+      {points.map((p, i) => {
+        if (!shouldShowLabel(i)) return null
+        return (
+          <text key={i} x={xBandCenter(i)} y={height - padding.bottom + 18}
+                textAnchor="middle" fontSize="9" fill="#6b7280">
+            {p.label}
+          </text>
+        )
+      })}
+
+      {points.map((p, i) => {
+        let cum = 0
+        return (
+          <g key={i}>
+            {SPORT_STACK.map(({ key, color }) => {
+              const val = p.bySport[key] ?? 0
+              if (val <= 0) return null
+              const yTop = yAt(cum + val)
+              const yBottom = yAt(cum)
+              cum += val
+              return (
+                <rect key={key} x={xBandCenter(i) - barWidth / 2} y={yTop}
+                      width={barWidth} height={Math.max(0, yBottom - yTop)} fill={color} />
+              )
+            })}
+          </g>
+        )
+      })}
+
+      {/* Hit target spans the whole band (not just the bar) so hovering
+          anywhere in a week's column — including the gap beside a short or
+          empty bar — still shows its tooltip. */}
+      {points.map((p, i) => (
+        <rect
+          key={i}
+          x={padding.left + bandStep * i}
+          y={padding.top}
+          width={bandStep}
+          height={innerH}
+          fill="transparent"
+          onMouseEnter={() => setHoverIndex(i)}
+          onMouseLeave={() => setHoverIndex(null)}
+          style={{ cursor: 'pointer' }}
+        />
+      ))}
+
+      {hovered && (
+        <g pointerEvents="none">
+          <rect
+            x={tooltipCx - sportTooltipW / 2}
+            y={tooltipTop}
+            width={sportTooltipW}
+            height={sportTooltipH}
+            rx="5"
+            fill="#111827"
+            opacity="0.92"
+          />
+          <text x={tooltipCx} y={tooltipTop + 12} textAnchor="middle" fontSize="10" fontWeight="700" fill="#fff">
+            {hovered.label}
+          </text>
+          {hoveredSegments.map((s, idx) => {
+            const rowY = tooltipTop + TOOLTIP_HEADER_H + idx * TOOLTIP_ROW_H
+            return (
+              <g key={s.key}>
+                <circle cx={tooltipCx - sportTooltipW / 2 + 10} cy={rowY + 5} r="3" fill={s.color} />
+                <text x={tooltipCx - sportTooltipW / 2 + 18} y={rowY + 9} fontSize="9.5" fill="#e5e7eb">
+                  {s.label}
+                </text>
+                <text x={tooltipCx + sportTooltipW / 2 - 10} y={rowY + 9} textAnchor="end" fontSize="9.5" fill="#e5e7eb">
+                  {hovered.bySport[s.key]}h
+                </text>
+              </g>
+            )
+          })}
+          {(() => {
+            const rowY = tooltipTop + TOOLTIP_HEADER_H + hoveredSegments.length * TOOLTIP_ROW_H
+            return (
+              <>
+                <text x={tooltipCx - sportTooltipW / 2 + 10} y={rowY + 9} fontSize="10" fontWeight="700" fill="#fff">
+                  Total
+                </text>
+                <text x={tooltipCx + sportTooltipW / 2 - 10} y={rowY + 9} textAnchor="end" fontSize="10" fontWeight="700" fill="#fff">
+                  {hovered.total}h
+                </text>
+              </>
+            )
+          })()}
+        </g>
+      )}
+    </svg>
+  )
+}
+
 export default function GraphsModal({ onClose }) {
-  const [weekly3mo, setWeekly3mo]   = useState(null)
+  const [weekly3moBySport, setWeekly3moBySport] = useState(null)
   const [weeklyYear, setWeeklyYear] = useState(null)
   const [bests, setBests]           = useState(null)
   const [raceBests, setRaceBests]   = useState(null)
@@ -404,11 +620,29 @@ export default function GraphsModal({ onClose }) {
     ro.observe(threeMoEl)
     ro.observe(yearEl)
     return () => ro.disconnect()
-  }, [weekly3mo])
+  }, [weekly3moBySport])
 
   const scale = threeMoSize && threeMoSize.width ? threeMoSize.width / THREE_MO_VIEWBOX_WIDTH : null
   const yearViewBoxWidth  = scale && yearWidth ? yearWidth / scale : 700
   const yearViewBoxHeight = scale && threeMoSize ? threeMoSize.height / scale : 200
+
+  // Below this width the layout switches to phone mode's single-column
+  // stack (see the matching @media (max-width: 700px) rule in styles.css),
+  // where the year chart becomes a fixed-size, horizontally scrollable SVG
+  // instead of one that shrinks to fit its column.
+  const [isPhone, setIsPhone] = useState(false)
+  useEffect(() => {
+    const mq = window.matchMedia('(max-width: 700px)')
+    const update = () => setIsPhone(mq.matches)
+    update()
+    mq.addEventListener('change', update)
+    return () => mq.removeEventListener('change', update)
+  }, [])
+
+  // scale, reused from above, already maps the 3-month chart's viewBox units
+  // to its actual on-screen pixels — applying it to YEAR_VIEWBOX_WIDTH_MATCHED
+  // gives the year chart the same per-week pixel size on this screen.
+  const yearMatchedPixelWidth = scale ? scale * YEAR_VIEWBOX_WIDTH_MATCHED : null
 
   useEffect(() => {
     function onKey(e) { if (e.key === 'Escape') close() }
@@ -424,7 +658,7 @@ export default function GraphsModal({ onClose }) {
     const startMonday3mo = addWeeks(currentMonday, -(WEEKS_3MO - 1))
     api.list(toYMD(startMonday3mo), toYMD(addDays(currentMonday, 6)))
       .then(list => {
-        setWeekly3mo(buildWeeklyPoints(listToByDate(list), startMonday3mo, WEEKS_3MO))
+        setWeekly3moBySport(buildWeeklySportPoints(listToByDate(list), startMonday3mo, WEEKS_3MO))
         setBests(computeDistancePRs(list))
       })
       .catch(err => setError3mo(err.message))
@@ -511,14 +745,22 @@ export default function GraphsModal({ onClose }) {
           </div>
 
           <div className="graph-panel graph-panel--chart graph-panel--chart-3mo">
-            <h3 className="graph-panel-title">Weekly Duration — Last Three Months</h3>
+            <h3 className="graph-panel-title">Weekly Duration by Sport — Last Three Months</h3>
+            <div className="sport-legend">
+              {SPORT_STACK.map(s => (
+                <span className="sport-legend__item" key={s.key}>
+                  <span className="sport-legend__dot" style={{ background: s.color }} />
+                  {s.label}
+                </span>
+              ))}
+            </div>
             {error3mo && <div className="modal-submit-error">Couldn't load data — {error3mo}</div>}
-            {!error3mo && !weekly3mo && <div className="graph-loading">Loading…</div>}
-            {weekly3mo && (
-              <WeeklyDurationChart
-                points={weekly3mo}
+            {!error3mo && !weekly3moBySport && <div className="graph-loading">Loading…</div>}
+            {weekly3moBySport && (
+              <WeeklyDurationBySportChart
+                points={weekly3moBySport}
                 svgRef={threeMoWrapRef}
-                ariaLabel="Total workout duration per week, in hours, over the last three months"
+                ariaLabel="Total workout duration per week, broken down by sport, over the last three months"
               />
             )}
           </div>
@@ -527,14 +769,31 @@ export default function GraphsModal({ onClose }) {
             <h3 className="graph-panel-title">Weekly Duration — Last Year</h3>
             {errorYear && <div className="modal-submit-error">Couldn't load data — {errorYear}</div>}
             {!errorYear && !weeklyYear && <div className="graph-loading">Loading…</div>}
-            {weeklyYear && (
+            {weeklyYear && (isPhone ? (
+              threeMoSize ? (
+                <div className="graph-year-scroll">
+                  <WeeklyDurationChart
+                    points={weeklyYear}
+                    width={YEAR_VIEWBOX_WIDTH_MATCHED}
+                    height={260}
+                    pixelWidth={yearMatchedPixelWidth}
+                    pixelHeight={threeMoSize.height}
+                    boundaryIndex={YEAR_BOUNDARY_INDEX}
+                    ariaLabel="Total workout duration per week, in hours, over the last year"
+                  />
+                </div>
+              ) : (
+                <div className="graph-loading">Loading…</div>
+              )
+            ) : (
               <WeeklyDurationChart
                 points={weeklyYear}
                 width={yearViewBoxWidth}
                 height={yearViewBoxHeight}
+                boundaryIndex={YEAR_BOUNDARY_INDEX}
                 ariaLabel="Total workout duration per week, in hours, over the last year"
               />
-            )}
+            ))}
           </div>
         </div>
       </div>
