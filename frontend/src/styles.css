@@ -1616,6 +1616,12 @@ body {
   border-color: #ef4444;
 }
 
+.form-input:disabled {
+  background: #f3f4f6;
+  color: #6b7280;
+  cursor: not-allowed;
+}
+
 .form-input--error:focus {
   box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.1);
 }
@@ -1867,6 +1873,74 @@ body {
 .gym-exercises__input {
   padding: 5px 7px;
   font-size: 13px;
+}
+
+.run-splits {
+  overflow-x: auto;
+  border: 1px solid #e2e5ea;
+  border-radius: 6px;
+  max-height: 220px;
+  overflow-y: auto;
+}
+
+.run-splits__table {
+  border-collapse: collapse;
+  width: 100%;
+}
+
+.run-splits__table th {
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: #9ca3af;
+  text-align: left;
+  padding: 6px 10px 4px;
+  white-space: nowrap;
+  position: sticky;
+  top: 0;
+  background: #fff;
+}
+
+.run-splits__table td {
+  padding: 4px 10px;
+  font-size: 13px;
+  color: #111827;
+}
+
+.run-splits__table tr:not(:last-child) td {
+  border-bottom: 1px solid #f1f2f4;
+}
+
+/* Sign/digits/unit as three fixed-width tracks rather than one string, so
+   the digits line up down the column whether or not a given row has a "-" —
+   plain text-align: right would instead shift the digits by however wide
+   the sign happens to be on that row. */
+.run-splits__elev {
+  display: inline-grid;
+  /* Fixed widths, not auto - each row is its own grid instance, so an auto
+     track sizes to that row's own digit count and never lines up with any
+     other row. A fixed width is what actually makes the last digit land in
+     the same spot on every row, e.g. the "2" in "-2" under the "8" in "-18". */
+  grid-template-columns: 6px 22px 14px;
+  column-gap: 0;
+  align-items: baseline;
+  font-variant-numeric: tabular-nums;
+}
+
+.run-splits__elev-sign {
+  text-align: right;
+  font-size: 10px;
+}
+
+.run-splits__elev-value {
+  text-align: right;
+}
+
+.run-splits__elev-unit {
+  text-align: left;
+  padding-left: 2px;
+  color: #9ca3af;
 }
 
 /* Every other column is sized to its own fixed-width input, so giving this

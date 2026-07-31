@@ -41,6 +41,29 @@ SCHEMA_SQL = """
     ALTER TABLE workouts ADD COLUMN IF NOT EXISTS bike_exercises TEXT;
     ALTER TABLE workouts ADD COLUMN IF NOT EXISTS swim_exercises TEXT;
 
+    -- Net elevation change in metres (Garmin's elevationGain minus
+    -- elevationLoss, matching how Strava displays it — elevationGain alone
+    -- is never negative, so a net-downhill activity/split would otherwise
+    -- show 0 instead of a negative number), written only by the Garmin sync
+    -- (see sync_garmin.py). There is no API path or form field that lets a
+    -- user set it directly, same as garmin_activity_id.
+    --
+    -- elevation_gain_m (gain-only) was replaced by this column rather than
+    -- kept alongside it, same as the old `completed` column below — a field
+    -- named "gain" holding negative numbers would be a standing footgun.
+    ALTER TABLE workouts ADD COLUMN IF NOT EXISTS elevation_net_m REAL;
+    ALTER TABLE workouts DROP COLUMN IF EXISTS elevation_gain_m;
+
+    -- Per-kilometre splits, JSON-encoded array of
+    -- {distance_km, duration_s, elevation_net_m} — same storage approach as
+    -- gym_exercises, one column per sport since a workout is only ever one
+    -- of them (same reasoning as run_exercises/bike_exercises above). Only
+    -- backfilled from SPLITS_START_DATE onward (see sync_garmin.py) since
+    -- it costs one extra Garmin API call per activity; written only by the
+    -- Garmin sync, never user-editable.
+    ALTER TABLE workouts ADD COLUMN IF NOT EXISTS run_splits TEXT;
+    ALTER TABLE workouts ADD COLUMN IF NOT EXISTS bike_splits TEXT;
+
     -- completed was write-only (set on insert/Garmin sync, never read —
     -- actual card status is derived from planned vs. actual numbers
     -- instead) and has been fully removed from the model/code; drop it

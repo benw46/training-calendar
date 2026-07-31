@@ -70,6 +70,53 @@ function fmtDurationInput(minutes) {
   return `${h}:${String(m).padStart(2, '0')}`
 }
 
+// Pace is derived from actual duration/distance rather than stored, so it
+// stays live as either input changes — including for manually-entered runs
+// that never came from Garmin.
+function formatPace(durationMinutes, distanceKm) {
+  if (!durationMinutes || !distanceKm) return '—'
+  const paceMinPerKm = durationMinutes / distanceKm
+  let mins = Math.floor(paceMinPerKm)
+  let secs = Math.round((paceMinPerKm - mins) * 60)
+  if (secs === 60) { mins += 1; secs = 0 }
+  return `${mins}:${String(secs).padStart(2, '0')} /km`
+}
+
+// Cycling is normally read as speed rather than pace — same
+// duration/distance inputs as formatPace, just expressed as km/h.
+function formatSpeed(durationMinutes, distanceKm) {
+  if (!durationMinutes || !distanceKm) return '—'
+  const kmh = distanceKm / (durationMinutes / 60)
+  return `${kmh.toFixed(1)} km/h`
+}
+
+// Net elevation change (gain minus loss, matching how Strava shows it —
+// can be negative for a net-downhill split) only ever comes from Garmin (see
+// sync_garmin.py); there's no form field that writes it.
+function formatElevation(elevationNetM) {
+  if (elevationNetM == null) return '—'
+  return `${Math.round(elevationNetM)} m`
+}
+
+// Same value as formatElevation, but split into sign/digits/unit so the
+// splits table can lay them out in fixed-width columns — the digits line up
+// vertically down the table regardless of whether a row has a "-" or not,
+// rather than the whole string just being right-aligned as one block.
+function elevationParts(elevationNetM) {
+  if (elevationNetM == null) return { sign: '', value: '—', unit: '' }
+  const rounded = Math.round(elevationNetM)
+  return { sign: rounded < 0 ? '−' : '', value: Math.abs(rounded), unit: 'm' }
+}
+
+// Every split is a full km except (usually) the last one, which covers
+// whatever distance was left when the run ended — label that one by its own
+// distance (e.g. "0.34") instead of the next whole km number, since it isn't
+// actually a full kilometre.
+function splitKmLabel(distanceKm, index) {
+  if (distanceKm >= 0.995) return String(index + 1)
+  return String(Math.round(distanceKm * 100) / 100)
+}
+
 // A bare integer typed into a duration field is shorthand: 1-10 means
 // hours, 11-1000 means minutes. Anything else (including h:mm) is left
 // untouched so the normal h:mm entry path still works.
@@ -555,7 +602,7 @@ export default function WorkoutModal({ workout, initialDate, onClose, onSaved, o
   }
 
   const typeLabel = isEvent ? 'Event' : isNote ? 'Note' : isPeriod ? 'Period' : 'Workout'
-  const modalTitle = `${isEdit ? 'Edit' : 'Add'} ${typeLabel}`
+  const modalTitle = `${isEdit ? 'View' : 'Add'} ${typeLabel}`
 
   // Period fans out into separate note workouts rather than persisting as
   // its own entity (see handleSave), so editing an existing workout can't
@@ -949,6 +996,73 @@ export default function WorkoutModal({ workout, initialDate, onClose, onSaved, o
                   </div>
                 )}
               </div>
+
+              {(isRun || isBike) && (() => {
+                // Cycling is normally read as speed, running as pace — same
+                // duration/distance inputs, just a different unit.
+                const paceLabel = isBike ? 'Speed' : 'Pace'
+                const formatPaceOrSpeed = isBike ? formatSpeed : formatPace
+                const splits = isBike ? workout?.bike_splits : workout?.run_splits
+                return (
+                  <>
+                    <div className="form-row form-row--inline">
+                      <div className="form-field">
+                        <label className="form-label">{paceLabel}</label>
+                        <input
+                          type="text"
+                          className="form-input"
+                          value={formatPaceOrSpeed(parseDuration(form.actual_duration), parseFloat(form.actual_distance))}
+                          disabled
+                        />
+                      </div>
+                      <div className="form-field">
+                        <label className="form-label">Elevation</label>
+                        <input
+                          type="text"
+                          className="form-input"
+                          value={formatElevation(workout?.elevation_net_m)}
+                          disabled
+                        />
+                      </div>
+                    </div>
+
+                    {splits?.length > 0 && (
+                      <div className="form-row">
+                        <label className="form-label">Splits</label>
+                        <div className="run-splits">
+                          <table className="run-splits__table">
+                            <thead>
+                              <tr>
+                                <th>Km</th>
+                                <th>{paceLabel}</th>
+                                <th>Elev</th>
+                              </tr>
+                            </thead>
+                            <tbody>
+                              {splits.map((split, i) => {
+                                const elev = elevationParts(split.elevation_net_m)
+                                return (
+                                  <tr key={i}>
+                                    <td>{splitKmLabel(split.distance_km, i)}</td>
+                                    <td>{formatPaceOrSpeed(split.duration_s / 60, split.distance_km)}</td>
+                                    <td>
+                                      <span className="run-splits__elev">
+                                        <span className="run-splits__elev-sign">{elev.sign}</span>
+                                        <span className="run-splits__elev-value">{elev.value}</span>
+                                        <span className="run-splits__elev-unit">{elev.unit}</span>
+                                      </span>
+                                    </td>
+                                  </tr>
+                                )
+                              })}
+                            </tbody>
+                          </table>
+                        </div>
+                      </div>
+                    )}
+                  </>
+                )
+              })()}
             </>
           )}
 

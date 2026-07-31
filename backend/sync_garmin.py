@@ -17,6 +17,7 @@ import json
 import logging
 import os
 import sys
+import time
 from datetime import date, datetime, timedelta, timezone
 
 from dotenv import load_dotenv
@@ -41,6 +42,14 @@ DEFAULT_LOOKBACK_DAYS = 90
 MAX_LOOKBACK_DAYS = 365
 SYNC_OVERLAP_DAYS = 14
 
+# Per-kilometre splits cost one extra Garmin API call per activity, so they're
+# only fetched for runs from this fixed date onward (per user request, not a
+# rolling window) rather than backfilled across the whole history. Since it's
+# a fixed calendar date, this only matters for the initial backfill window —
+# every run synced after it is always later than this date anyway.
+SPLITS_START_DATE = date(2026, 7, 6)
+SPLITS_FETCH_DELAY_SECONDS = 0.75
+
 SPORT_MAP = {
     "running": "run",
     "trail_running": "run",
@@ -63,6 +72,91 @@ SPORT_MAP = {
 
 def _map_sport(type_key: str) -> str:
     return SPORT_MAP.get(type_key, "other")
+
+
+def _net_elevation(elevation_gain, elevation_loss):
+    """Net elevation change, matching how Strava displays it per-split.
+
+    Garmin reports gain and loss as separate always-non-negative figures;
+    elevationGain alone can't represent a net-downhill split (it would show
+    0 rather than negative). Missing is only "no data" if BOTH are absent -
+    a genuinely flat/level split legitimately reports 0 for one or both.
+    """
+    if elevation_gain is None and elevation_loss is None:
+        return None
+    return round((elevation_gain or 0) - (elevation_loss or 0), 1)
+
+
+# Which column holds per-km splits for each sport that supports them - keys
+# double as the set of sports the backfill below runs for. Column names come
+# from this fixed internal dict, never from request/activity data, so the
+# f-string SQL below is safe the same way the LISTEN/NOTIFY channel name is.
+SPLIT_COLUMNS = {"run": "run_splits", "bike": "bike_splits"}
+
+
+def _fetch_splits(client, garmin_id):
+    """Fetch and normalise per-km splits for one activity, or None on failure.
+
+    Never raises - a failed/malformed splits fetch just leaves the sport's
+    splits column NULL for this activity, to be retried on the next sync
+    (see _backfill_splits), rather than failing the whole activity.
+    """
+    try:
+        data = client.get_activity_splits(garmin_id)
+    except Exception:
+        logger.exception("Failed to fetch splits for activity %s", garmin_id)
+        return None
+
+    laps = (data or {}).get("lapDTOs") or []
+    splits = []
+    for lap in laps:
+        distance_m = lap.get("distance")
+        duration_s = lap.get("duration")
+        if not distance_m or duration_s is None:
+            continue
+        splits.append({
+            "distance_km": round(distance_m / 1000, 3),
+            "duration_s": round(duration_s),
+            "elevation_net_m": _net_elevation(lap.get("elevationGain"), lap.get("elevationLoss")),
+        })
+    return splits
+
+
+def _backfill_splits(conn, client):
+    """Fill in splits for any run/bike activity in the target window missing it.
+
+    Runs after the main sync loop rather than inline in it, so the same
+    query covers both activities matched/inserted just now and ones that
+    were already synced before this feature existed - one code path, and it
+    naturally does nothing once every eligible activity has splits.
+    """
+    total_filled = 0
+    for sport, column in SPLIT_COLUMNS.items():
+        rows = conn.execute(
+            f"""SELECT id, garmin_activity_id FROM workouts
+               WHERE sport = ? AND garmin_activity_id IS NOT NULL
+               AND date >= ? AND {column} IS NULL""",
+            (sport, SPLITS_START_DATE.isoformat()),
+        ).fetchall()
+
+        filled = 0
+        for row in rows:
+            splits = _fetch_splits(client, row["garmin_activity_id"])
+            time.sleep(SPLITS_FETCH_DELAY_SECONDS)
+            if splits is None:
+                continue
+            conn.execute(
+                f"UPDATE workouts SET {column} = ? WHERE id = ?",
+                (json.dumps(splits), row["id"]),
+            )
+            conn.commit()
+            filled += 1
+
+        if rows:
+            logger.info("Backfilled %s splits for %d/%d eligible activities", sport, filled, len(rows))
+        total_filled += filled
+
+    return total_filled
 
 
 def _load_cached_tokens():
@@ -196,6 +290,7 @@ def run_sync():
                 raw_distance = activity.get("distance", 0) or 0
                 distance_km = round(raw_distance / 1000, 2) if raw_distance > 10 else None
                 activity_name = activity.get("activityName") or sport.capitalize()
+                elevation_net_m = _net_elevation(activity.get("elevationGain"), activity.get("elevationLoss"))
 
                 candidates = conn.execute(
                     """SELECT * FROM workouts
@@ -208,9 +303,9 @@ def run_sync():
                     conn.execute(
                         """INSERT INTO workouts
                            (date, sport, name, actual_duration_minutes, actual_distance_km,
-                            garmin_activity_id)
-                           VALUES (?, ?, ?, ?, ?, ?)""",
-                        (activity_date, sport, activity_name, duration_minutes, distance_km, garmin_id),
+                            garmin_activity_id, elevation_net_m)
+                           VALUES (?, ?, ?, ?, ?, ?, ?)""",
+                        (activity_date, sport, activity_name, duration_minutes, distance_km, garmin_id, elevation_net_m),
                     )
                     unmatched += 1
                 else:
@@ -225,9 +320,9 @@ def run_sync():
                     conn.execute(
                         """UPDATE workouts SET
                            actual_duration_minutes = ?, actual_distance_km = ?,
-                           garmin_activity_id = ?
+                           garmin_activity_id = ?, elevation_net_m = ?
                            WHERE id = ?""",
-                        (duration_minutes, distance_km, garmin_id, match["id"]),
+                        (duration_minutes, distance_km, garmin_id, elevation_net_m, match["id"]),
                     )
                     synced += 1
             except Exception:
@@ -240,6 +335,14 @@ def run_sync():
 
             if i % COMMIT_BATCH_SIZE == 0:
                 conn.commit()
+
+        # Commit the core sync before the splits backfill, which does its
+        # own per-row commits and can fail/retry independently.
+        conn.commit()
+        try:
+            _backfill_splits(conn, client)
+        except Exception:
+            logger.exception("Splits backfill failed; core sync is unaffected")
 
         # Watermark advances only as far as the latest activity date Garmin
         # actually returned - never to "now", never backwards.

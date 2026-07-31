@@ -41,6 +41,17 @@ class IntervalExercise(BaseModel):
     reps: Optional[int] = None
 
 
+# One entry per kilometre of a run or ride, sourced from Garmin's splits
+# endpoint — see sync_garmin.py. Pace/speed isn't stored; the frontend
+# derives it from duration_s/distance_km the same way it derives the overall
+# figure. Shared shape across sports (like IntervalExercise above), stored
+# per-sport as run_splits/bike_splits since a workout is only ever one sport.
+class DistanceSplit(BaseModel):
+    distance_km: float
+    duration_s: int
+    elevation_net_m: Optional[float] = None
+
+
 class WorkoutBase(BaseModel):
     date: str  # YYYY-MM-DD
     sport: Sport
@@ -50,6 +61,9 @@ class WorkoutBase(BaseModel):
     actual_duration_minutes: Optional[int] = None
     actual_distance_km: Optional[float] = None
     garmin_activity_id: Optional[str] = None
+    elevation_net_m: Optional[float] = None
+    run_splits: Optional[list[DistanceSplit]] = None
+    bike_splits: Optional[list[DistanceSplit]] = None
     description: Optional[str] = None
     is_brick: bool = False
     gym_exercises: Optional[list[GymExercise]] = None
@@ -95,6 +109,9 @@ class WorkoutOut(WorkoutBase):
             actual_duration_minutes=row["actual_duration_minutes"],
             actual_distance_km=row["actual_distance_km"],
             garmin_activity_id=row["garmin_activity_id"],
+            elevation_net_m=row["elevation_net_m"],
+            run_splits=json.loads(row["run_splits"]) if row["run_splits"] else None,
+            bike_splits=json.loads(row["bike_splits"]) if row["bike_splits"] else None,
             description=row["description"],
             sort_order=row["sort_order"],
             is_brick=bool(row["is_brick"]),
