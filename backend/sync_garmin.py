@@ -77,12 +77,28 @@ def _map_sport(type_key: str) -> str:
 def _elevation_gain(elevation_gain):
     """Total elevation climbed, straight from Garmin's own figure.
 
-    Never netted against elevationLoss - a net-downhill split should still
-    show the metres actually climbed, not zero or negative.
+    Used for the overall workout figure - never netted against
+    elevationLoss, so a net-downhill activity still shows the metres
+    actually climbed, not zero or negative.
     """
     if elevation_gain is None:
         return None
     return round(elevation_gain, 1)
+
+
+def _net_elevation(elevation_gain, elevation_loss):
+    """Net elevation change for one split, matching how Strava displays it.
+
+    Garmin reports gain and loss as separate always-non-negative figures;
+    elevationGain alone can't represent a net-downhill split (it would show
+    0 rather than negative), so splits use gain-minus-loss while the overall
+    workout figure above stays gain-only. Missing is only "no data" if BOTH
+    are absent - a genuinely flat/level split legitimately reports 0 for one
+    or both.
+    """
+    if elevation_gain is None and elevation_loss is None:
+        return None
+    return round((elevation_gain or 0) - (elevation_loss or 0), 1)
 
 
 # Which column holds per-km splits for each sport that supports them - keys
@@ -115,7 +131,7 @@ def _fetch_splits(client, garmin_id):
         splits.append({
             "distance_km": round(distance_m / 1000, 3),
             "duration_s": round(duration_s),
-            "elevation_gain_m": _elevation_gain(lap.get("elevationGain")),
+            "elevation_net_m": _net_elevation(lap.get("elevationGain"), lap.get("elevationLoss")),
         })
     return splits
 

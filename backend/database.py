@@ -41,17 +41,18 @@ SCHEMA_SQL = """
     ALTER TABLE workouts ADD COLUMN IF NOT EXISTS bike_exercises TEXT;
     ALTER TABLE workouts ADD COLUMN IF NOT EXISTS swim_exercises TEXT;
 
-    -- Total elevation gain in metres, straight from Garmin's elevationGain
-    -- (never netted against elevationLoss, so a net-downhill activity/split
-    -- still shows the metres actually climbed rather than 0 or negative),
-    -- written only by the Garmin sync (see sync_garmin.py). There is no API
-    -- path or form field that lets a user set it directly, same as
-    -- garmin_activity_id.
+    -- Total elevation gain in metres for the whole workout, straight from
+    -- Garmin's elevationGain (never netted against elevationLoss, so a
+    -- net-downhill activity still shows the metres actually climbed rather
+    -- than 0 or negative). Per-split elevation below is netted instead - see
+    -- the run_splits/bike_splits comment. Written only by the Garmin sync
+    -- (see sync_garmin.py); there is no API path or form field that lets a
+    -- user set it directly, same as garmin_activity_id.
     ALTER TABLE workouts ADD COLUMN IF NOT EXISTS elevation_gain_m REAL;
     ALTER TABLE workouts DROP COLUMN IF EXISTS elevation_net_m;
 
     -- Per-kilometre splits, JSON-encoded array of
-    -- {distance_km, duration_s, elevation_gain_m} — same storage approach as
+    -- {distance_km, duration_s, elevation_net_m} — same storage approach as
     -- gym_exercises, one column per sport since a workout is only ever one
     -- of them (same reasoning as run_exercises/bike_exercises above). Only
     -- backfilled from SPLITS_START_DATE onward (see sync_garmin.py) since

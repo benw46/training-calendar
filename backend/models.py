@@ -49,7 +49,7 @@ class IntervalExercise(BaseModel):
 class DistanceSplit(BaseModel):
     distance_km: float
     duration_s: int
-    elevation_gain_m: Optional[float] = None
+    elevation_net_m: Optional[float] = None
 
 
 class WorkoutBase(BaseModel):
