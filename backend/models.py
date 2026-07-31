@@ -49,7 +49,7 @@ class IntervalExercise(BaseModel):
 class DistanceSplit(BaseModel):
     distance_km: float
     duration_s: int
-    elevation_net_m: Optional[float] = None
+    elevation_gain_m: Optional[float] = None
 
 
 class WorkoutBase(BaseModel):
@@ -61,7 +61,7 @@ class WorkoutBase(BaseModel):
     actual_duration_minutes: Optional[int] = None
     actual_distance_km: Optional[float] = None
     garmin_activity_id: Optional[str] = None
-    elevation_net_m: Optional[float] = None
+    elevation_gain_m: Optional[float] = None
     run_splits: Optional[list[DistanceSplit]] = None
     bike_splits: Optional[list[DistanceSplit]] = None
     description: Optional[str] = None
@@ -109,7 +109,7 @@ class WorkoutOut(WorkoutBase):
             actual_duration_minutes=row["actual_duration_minutes"],
             actual_distance_km=row["actual_distance_km"],
             garmin_activity_id=row["garmin_activity_id"],
-            elevation_net_m=row["elevation_net_m"],
+            elevation_gain_m=row["elevation_gain_m"],
             run_splits=json.loads(row["run_splits"]) if row["run_splits"] else None,
             bike_splits=json.loads(row["bike_splits"]) if row["bike_splits"] else None,
             description=row["description"],

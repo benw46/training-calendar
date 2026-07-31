@@ -90,22 +90,21 @@ function formatSpeed(durationMinutes, distanceKm) {
   return `${kmh.toFixed(1)} km/h`
 }
 
-// Net elevation change (gain minus loss, matching how Strava shows it —
-// can be negative for a net-downhill split) only ever comes from Garmin (see
-// sync_garmin.py); there's no form field that writes it.
-function formatElevation(elevationNetM) {
-  if (elevationNetM == null) return '—'
-  return `${Math.round(elevationNetM)} m`
+// Total elevation gain, straight from Garmin — only ever comes from the
+// sync (see sync_garmin.py); there's no form field that writes it.
+function formatElevation(elevationGainM) {
+  if (elevationGainM == null) return '—'
+  return `${Math.round(elevationGainM)} m`
 }
 
 // Same value as formatElevation, but split into sign/digits/unit so the
 // splits table can lay them out in fixed-width columns — the digits line up
-// vertically down the table regardless of whether a row has a "-" or not,
-// rather than the whole string just being right-aligned as one block.
-function elevationParts(elevationNetM) {
-  if (elevationNetM == null) return { sign: '', value: '—', unit: '' }
-  const rounded = Math.round(elevationNetM)
-  return { sign: rounded < 0 ? '−' : '', value: Math.abs(rounded), unit: 'm' }
+// vertically down the table regardless of row content, rather than the
+// whole string just being right-aligned as one block. sign is always empty
+// since elevation gain is never negative; kept for markup symmetry.
+function elevationParts(elevationGainM) {
+  if (elevationGainM == null) return { sign: '', value: '—', unit: '' }
+  return { sign: '', value: Math.round(elevationGainM), unit: 'm' }
 }
 
 // Every split is a full km except (usually) the last one, which covers
@@ -1020,7 +1019,7 @@ export default function WorkoutModal({ workout, initialDate, onClose, onSaved, o
                         <input
                           type="text"
                           className="form-input"
-                          value={formatElevation(workout?.elevation_net_m)}
+                          value={formatElevation(workout?.elevation_gain_m)}
                           disabled
                         />
                       </div>
@@ -1040,7 +1039,7 @@ export default function WorkoutModal({ workout, initialDate, onClose, onSaved, o
                             </thead>
                             <tbody>
                               {splits.map((split, i) => {
-                                const elev = elevationParts(split.elevation_net_m)
+                                const elev = elevationParts(split.elevation_gain_m)
                                 return (
                                   <tr key={i}>
                                     <td>{splitKmLabel(split.distance_km, i)}</td>

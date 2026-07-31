@@ -74,17 +74,15 @@ def _map_sport(type_key: str) -> str:
     return SPORT_MAP.get(type_key, "other")
 
 
-def _net_elevation(elevation_gain, elevation_loss):
-    """Net elevation change, matching how Strava displays it per-split.
+def _elevation_gain(elevation_gain):
+    """Total elevation climbed, straight from Garmin's own figure.
 
-    Garmin reports gain and loss as separate always-non-negative figures;
-    elevationGain alone can't represent a net-downhill split (it would show
-    0 rather than negative). Missing is only "no data" if BOTH are absent -
-    a genuinely flat/level split legitimately reports 0 for one or both.
+    Never netted against elevationLoss - a net-downhill split should still
+    show the metres actually climbed, not zero or negative.
     """
-    if elevation_gain is None and elevation_loss is None:
+    if elevation_gain is None:
         return None
-    return round((elevation_gain or 0) - (elevation_loss or 0), 1)
+    return round(elevation_gain, 1)
 
 
 # Which column holds per-km splits for each sport that supports them - keys
@@ -117,7 +115,7 @@ def _fetch_splits(client, garmin_id):
         splits.append({
             "distance_km": round(distance_m / 1000, 3),
             "duration_s": round(duration_s),
-            "elevation_net_m": _net_elevation(lap.get("elevationGain"), lap.get("elevationLoss")),
+            "elevation_gain_m": _elevation_gain(lap.get("elevationGain")),
         })
     return splits
 
@@ -279,9 +277,21 @@ def run_sync():
             try:
                 garmin_id = str(activity["activityId"])
 
-                if conn.execute(
-                    "SELECT 1 FROM workouts WHERE garmin_activity_id = ?", (garmin_id,)
-                ).fetchone():
+                existing = conn.execute(
+                    "SELECT id, elevation_gain_m FROM workouts WHERE garmin_activity_id = ?", (garmin_id,)
+                ).fetchone()
+                if existing:
+                    # Backfill elevation for activities matched before this
+                    # column existed (e.g. the elevation_net_m -> elevation_gain_m
+                    # rename) - the value is already in `activity`, so this
+                    # costs no extra Garmin API call.
+                    if existing["elevation_gain_m"] is None:
+                        backfill_elevation_gain_m = _elevation_gain(activity.get("elevationGain"))
+                        if backfill_elevation_gain_m is not None:
+                            conn.execute(
+                                "UPDATE workouts SET elevation_gain_m = ? WHERE id = ?",
+                                (backfill_elevation_gain_m, existing["id"]),
+                            )
                     continue
 
                 activity_date = activity["startTimeLocal"][:10]
@@ -290,7 +300,7 @@ def run_sync():
                 raw_distance = activity.get("distance", 0) or 0
                 distance_km = round(raw_distance / 1000, 2) if raw_distance > 10 else None
                 activity_name = activity.get("activityName") or sport.capitalize()
-                elevation_net_m = _net_elevation(activity.get("elevationGain"), activity.get("elevationLoss"))
+                elevation_gain_m = _elevation_gain(activity.get("elevationGain"))
 
                 candidates = conn.execute(
                     """SELECT * FROM workouts
@@ -303,9 +313,9 @@ def run_sync():
                     conn.execute(
                         """INSERT INTO workouts
                            (date, sport, name, actual_duration_minutes, actual_distance_km,
-                            garmin_activity_id, elevation_net_m)
+                            garmin_activity_id, elevation_gain_m)
                            VALUES (?, ?, ?, ?, ?, ?, ?)""",
-                        (activity_date, sport, activity_name, duration_minutes, distance_km, garmin_id, elevation_net_m),
+                        (activity_date, sport, activity_name, duration_minutes, distance_km, garmin_id, elevation_gain_m),
                     )
                     unmatched += 1
                 else:
@@ -320,9 +330,9 @@ def run_sync():
                     conn.execute(
                         """UPDATE workouts SET
                            actual_duration_minutes = ?, actual_distance_km = ?,
-                           garmin_activity_id = ?, elevation_net_m = ?
+                           garmin_activity_id = ?, elevation_gain_m = ?
                            WHERE id = ?""",
-                        (duration_minutes, distance_km, garmin_id, elevation_net_m, match["id"]),
+                        (duration_minutes, distance_km, garmin_id, elevation_gain_m, match["id"]),
                     )
                     synced += 1
             except Exception:
