@@ -10,8 +10,8 @@ const SPORTS = ['swim', 'bike', 'run', 'strength', 'other', 'note', 'event', 'pe
 const SPORT_LABELS = { strength: 'Gym' }
 const MAX_DURATION_MINUTES = 100 * 60
 const MAX_DISTANCE_KM = 500
-const EMPTY_EXERCISE = { name: '', sets: '', reps: '', weight: '', bodyweight: false, is_time: false }
-const EMPTY_DISTANCE_EXERCISE = { name: '', distance: '', reps: '' }
+const EMPTY_EXERCISE = { name: '', sets: '', reps: '', weight: '', bodyweight: false, is_time: false, done: false }
+const EMPTY_DISTANCE_EXERCISE = { name: '', distance: '', reps: '', done: false }
 
 // With Time checked the Reps box holds m:ss / mm:ss instead of a count. It
 // still leaves here as a plain integer — total seconds — so `reps` is one
@@ -157,6 +157,7 @@ function initExercises(gymExercises) {
     weight:     ex.weight ?? '',
     bodyweight: ex.bodyweight ?? false,
     is_time:    ex.is_time ?? false,
+    done:       ex.done ?? false,
   }))
 }
 
@@ -170,6 +171,7 @@ function initDistanceExercises(exercises) {
     name:     ex.name ?? '',
     distance: ex.distance ?? '',
     reps:     ex.reps ?? '',
+    done:     ex.done ?? false,
   }))
 }
 
@@ -222,6 +224,7 @@ function buildGymExercises(rows) {
       weight:     !ex.bodyweight && ex.weight !== '' ? parseInt(ex.weight, 10) : null,
       bodyweight: ex.bodyweight,
       is_time:    ex.is_time,
+      done:       ex.done,
     }))
 }
 
@@ -234,6 +237,7 @@ function buildDistanceExercises(rows) {
       name:     ex.name.trim(),
       distance: ex.distance !== '' ? parseFloat(ex.distance) : null,
       reps:     ex.reps !== '' ? parseInt(ex.reps, 10) : null,
+      done:     ex.done,
     }))
 }
 
@@ -686,6 +690,7 @@ export default function WorkoutModal({ workout, initialDate, onClose, onSaved, o
                     <thead>
                       <tr>
                         <th></th>
+                        <th className="gym-exercises__th--center">Done</th>
                         <th>Activity</th>
                         <th>Sets</th>
                         <th>Reps</th>
@@ -722,10 +727,19 @@ export default function WorkoutModal({ workout, initialDate, onClose, onSaved, o
                               </svg>
                             </span>
                           </td>
+                          <td className="gym-exercises__td--center">
+                            <input
+                              type="checkbox"
+                              className="gym-exercises__done-checkbox"
+                              checked={ex.done}
+                              onChange={e => setExercise(i, 'done', e.target.checked)}
+                              aria-label="Mark done"
+                            />
+                          </td>
                           <td className="gym-exercises__td--name">
                             <textarea
                               rows={1}
-                              className="form-input gym-exercises__input gym-exercises__input--name"
+                              className={`form-input gym-exercises__input gym-exercises__input--name${ex.done ? ' gym-exercises__input--done' : ''}`}
                               placeholder="e.g. Bench Press"
                               value={ex.name}
                               ref={autoResizeTextarea}
@@ -828,6 +842,7 @@ export default function WorkoutModal({ workout, initialDate, onClose, onSaved, o
                     <thead>
                       <tr>
                         <th></th>
+                        <th className="gym-exercises__th--center">Done</th>
                         <th>Activity</th>
                         <th>Distance</th>
                         <th>Reps</th>
@@ -861,10 +876,19 @@ export default function WorkoutModal({ workout, initialDate, onClose, onSaved, o
                               </svg>
                             </span>
                           </td>
+                          <td className="gym-exercises__td--center">
+                            <input
+                              type="checkbox"
+                              className="gym-exercises__done-checkbox"
+                              checked={ex.done}
+                              onChange={e => setDistanceExercise(i, 'done', e.target.checked)}
+                              aria-label="Mark done"
+                            />
+                          </td>
                           <td className="gym-exercises__td--name">
                             <textarea
                               rows={1}
-                              className="form-input gym-exercises__input gym-exercises__input--name"
+                              className={`form-input gym-exercises__input gym-exercises__input--name${ex.done ? ' gym-exercises__input--done' : ''}`}
                               placeholder="e.g. Strides"
                               value={ex.name}
                               ref={autoResizeTextarea}

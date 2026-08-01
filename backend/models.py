@@ -26,6 +26,8 @@ class GymExercise(BaseModel):
     weight: Optional[int] = None  # kg
     bodyweight: bool = False
     is_time: bool = False
+    # User-toggled "Done" checkbox, one per exercise row.
+    done: bool = False
 
 
 # A Run/Bike/Swim's structured-interval breakdown (e.g. "6 x Strides,
@@ -39,6 +41,8 @@ class IntervalExercise(BaseModel):
     name: str
     distance: Optional[float] = None  # km
     reps: Optional[int] = None
+    # User-toggled "Done" checkbox, one per exercise row.
+    done: bool = False
 
 
 # One entry per kilometre of a run or ride, sourced from Garmin's splits

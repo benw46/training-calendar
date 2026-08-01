@@ -61,6 +61,13 @@ SCHEMA_SQL = """
     ALTER TABLE workouts ADD COLUMN IF NOT EXISTS run_splits TEXT;
     ALTER TABLE workouts ADD COLUMN IF NOT EXISTS bike_splits TEXT;
 
+    -- A workout-level "done" column was briefly added here and never
+    -- shipped — the "Done" checkbox lives per-exercise instead (a `done`
+    -- field inside each entry of gym_exercises/run_exercises/bike_exercises/
+    -- swim_exercises, no schema change needed since those are JSON text).
+    -- Drop it from any database that still has it from that.
+    ALTER TABLE workouts DROP COLUMN IF EXISTS done;
+
     -- completed was write-only (set on insert/Garmin sync, never read —
     -- actual card status is derived from planned vs. actual numbers
     -- instead) and has been fully removed from the model/code; drop it
