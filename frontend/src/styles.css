@@ -1427,11 +1427,12 @@ body {
     grid-row: 3;
   }
 
-  /* The year chart renders wider than the screen here (see
-     yearMatchedPixelWidth in GraphsModal.jsx) so a week is the same size as
-     in the 3-month chart above it, rather than being squeezed to fit. The
-     y-axis strip (WeeklyDurationChart's axisOnly render) sits outside the
-     scrolling half so 0h/4h/8h/etc stay on screen as the chart scrolls. */
+  /* The year chart renders wider than the screen here (see yearPixelWidth in
+     GraphsModal.jsx) so a week reads at close to the size it does in the
+     3-month chart above it, rather than being squeezed to fit. The y-axis
+     strip (WeeklyDurationChart's axisOnly render) sits outside the scrolling
+     half so 0h/4h/8h/etc stay on screen as the chart scrolls, and the chart
+     is scrolled to its right end on open. */
   .graph-year-scroll-wrap {
     display: flex;
     align-items: flex-start;
@@ -1468,6 +1469,17 @@ body {
 .pr-table th:nth-child(2), .pr-table td:nth-child(2) { width: 26%; }
 .pr-table th:nth-child(3), .pr-table td:nth-child(3) { width: 24%; }
 .pr-table th:nth-child(4), .pr-table td:nth-child(4) { width: 18%; }
+
+/* The Races table stacks its race-name and result inputs in one column
+   instead of giving each its own (see .race-best-fields), so it has three
+   columns to the Personal Bests table's four. Its first column takes exactly
+   the 32% + 26% those two used to occupy, which leaves Date and Time Since
+   at the same widths and therefore still aligned between the two tables —
+   the alignment the shared per-column widths above exist to maintain.
+   Same specificity as those rules, so this has to come after them. */
+.pr-table--races th:nth-child(1), .pr-table--races td:nth-child(1) { width: 58%; }
+.pr-table--races th:nth-child(2), .pr-table--races td:nth-child(2) { width: 24%; }
+.pr-table--races th:nth-child(3), .pr-table--races td:nth-child(3) { width: 18%; }
 
 .pr-table th {
   text-align: left;
@@ -1506,11 +1518,27 @@ body {
   width: 195px;
 }
 
-/* Drag handle sits to the left of the race-name input, inside the first cell. */
+/* Drag handle sits to the left of the stacked name/result fields, inside the
+   first cell — centered against the pair rather than pinned to the name. */
 .race-best-name-cell {
   display: flex;
   align-items: center;
   gap: 4px;
+}
+
+/* Race name over result. Both stretch to the column's full width (overriding
+   the fixed widths on .race-best-input and its --name variant) — with the
+   two no longer competing for one row, there's room to spend on each. */
+.race-best-fields {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.race-best-fields .race-best-input {
+  width: 100%;
 }
 
 .pr-table__drag-handle {

@@ -22,6 +22,29 @@ const CHART_PADDING_RIGHT = 12
 // particular screen's pixel size.
 const YEAR_VIEWBOX_WIDTH_MATCHED = CHART_PADDING_LEFT + CHART_PADDING_RIGHT +
   ((THREE_MO_VIEWBOX_WIDTH - CHART_PADDING_LEFT - CHART_PADDING_RIGHT) / (WEEKS_3MO - 1)) * (WEEKS_YEAR - 1)
+// Half the width of the "3 Months" marker label, which is centered on the
+// boundary line — so half of it hangs to the left of that line — plus a few
+// units of clearance from the viewport edge.
+const BOUNDARY_LABEL_HALF_WIDTH = 26
+// The widest the year chart's viewBox can be while still leaving the "3
+// Months" marker fully readable once the chart is scrolled fully right (where
+// it now opens). Everything from that label's left edge to the chart's right
+// edge has to fit within the visible scroll viewport, so the per-week spacing
+// that yields exactly that is the most the chart can afford; at the matched
+// spacing the marker sits off-screen to the left instead.
+//
+// This narrows the viewBox rather than shrinking the rendered pixel width,
+// deliberately: the SVGs scale uniformly (default preserveAspectRatio), so
+// pinching the pixel box alone would letterbox the chart vertically and
+// scale it by a different factor than the y-axis strip pinned beside it,
+// pulling their gridlines out of alignment. Holding pixels-per-viewBox-unit
+// at `scale` keeps text, dots and gridlines exactly the size they are in the
+// 3-month chart, and tightens only the week-to-week spacing.
+function yearViewBoxWidthFor(viewportViewBoxWidth) {
+  const tailWeeks = WEEKS_YEAR - 1 - YEAR_BOUNDARY_INDEX
+  const maxWeekStep = (viewportViewBoxWidth - CHART_PADDING_RIGHT - BOUNDARY_LABEL_HALF_WIDTH) / tailWeeks
+  return CHART_PADDING_LEFT + CHART_PADDING_RIGHT + maxWeekStep * (WEEKS_YEAR - 1)
+}
 // Fixed pixel width of the non-scrolling y-axis strip pinned beside the
 // phone-mode year chart — just wide enough for "16h"-sized tick labels.
 const AXIS_PANEL_WIDTH = 40
@@ -128,6 +151,25 @@ function formatFullDate(dateStr) {
 
 const RACE_TIME_PATTERN = /^\d{1,2}:\d{2}:\d{2}$/
 
+// Keeps the result field to digits punctuated as hh:mm:ss: anything that
+// isn't a digit is dropped and the colons are re-inserted from what's left,
+// so the only thing a keystroke can do is add or remove a digit.
+//
+// The digits fill from the right — seconds first, then minutes, then hours —
+// which is both how a time is typed (1,2,3,4,5 lands as 1:23:45) and what
+// makes this safe to re-run over a value that's already formatted. Filling
+// from the left would reformat a stored one-digit-hour time like "1:23:45"
+// into "12:34:5" the moment the field was edited; from the right it maps
+// back to itself, as does a two-digit-hour "12:34:56".
+function maskRaceTime(value) {
+  // Past six digits the field is full, so extra keystrokes are ignored
+  // rather than shifting the leading digits out.
+  const digits = value.replace(/\D/g, '').slice(0, 6)
+  if (digits.length <= 2) return digits
+  if (digits.length <= 4) return `${digits.slice(0, -2)}:${digits.slice(-2)}`
+  return `${digits.slice(0, -4)}:${digits.slice(-4, -2)}:${digits.slice(-2)}`
+}
+
 function RaceBestsTable({ records, onSave, draggedIndex, onDragStart, onDragOver, onDragEnd }) {
   const [drafts, setDrafts] = useState({}) // { [raceType]: { race_name?, result?, date? } }
   const dateInputRefs = useRef({})
@@ -174,11 +216,16 @@ function RaceBestsTable({ records, onSave, draggedIndex, onDragStart, onDragOver
   }
 
   return (
-    <table className="pr-table">
+    <table className="pr-table pr-table--races">
       <thead>
         <tr>
-          <th>Race</th>
-          <th>Result</th>
+          {/* Race name and result share this column, stacked (see
+              .race-best-fields) — at four columns the name and result inputs
+              were squeezed side by side into roughly a third of an already
+              narrow panel. This column is as wide as the Race and Result
+              columns of the Personal Bests table below were together, so
+              Date and Time Since still line up between the two tables. */}
+          <th>Race / Result</th>
           <th>Date</th>
           <th>Time Since</th>
         </tr>
@@ -215,25 +262,34 @@ function RaceBestsTable({ records, onSave, draggedIndex, onDragStart, onDragOver
                       <circle cx="7" cy="13" r="1.3" fill="currentColor" />
                     </svg>
                   </span>
-                  <input
-                    type="text"
-                    className="race-best-input race-best-input--name"
-                    placeholder="Race name"
-                    value={fieldValue(key, 'race_name')}
-                    onChange={e => handleChange(key, 'race_name', e.target.value)}
-                    onBlur={() => handleBlurText(key, 'race_name')}
-                  />
+                  <div className="race-best-fields">
+                    <input
+                      type="text"
+                      className="race-best-input race-best-input--name"
+                      placeholder="Race name"
+                      value={fieldValue(key, 'race_name')}
+                      onChange={e => handleChange(key, 'race_name', e.target.value)}
+                      onBlur={() => handleBlurText(key, 'race_name')}
+                    />
+                    {/* The header covers both fields jointly, so this one
+                        names itself — "Result" alone wouldn't convey the
+                        hh:mm:ss format handleBlurResult requires. */}
+                    <input
+                      type="text"
+                      className="race-best-input"
+                      placeholder="Result — hh:mm:ss"
+                      aria-label="Result"
+                      // Not type="number" — that would reject the colons
+                      // outright. inputMode gets the numeric keypad on a
+                      // phone; maskRaceTime does the actual restricting.
+                      inputMode="numeric"
+                      maxLength={8}
+                      value={fieldValue(key, 'result')}
+                      onChange={e => handleChange(key, 'result', maskRaceTime(e.target.value))}
+                      onBlur={() => handleBlurResult(key)}
+                    />
+                  </div>
                 </div>
-              </td>
-              <td>
-                <input
-                  type="text"
-                  className="race-best-input"
-                  placeholder="hh:mm:ss"
-                  value={fieldValue(key, 'result')}
-                  onChange={e => handleChange(key, 'result', e.target.value)}
-                  onBlur={() => handleBlurResult(key)}
-                />
               </td>
               <td className="race-best-date-cell">
                 <button
@@ -667,7 +723,32 @@ export default function GraphsModal({ onClose }) {
   // scale, reused from above, already maps the 3-month chart's viewBox units
   // to its actual on-screen pixels — applying it to YEAR_VIEWBOX_WIDTH_MATCHED
   // gives the year chart the same per-week pixel size on this screen.
-  const yearMatchedPixelWidth = scale ? scale * YEAR_VIEWBOX_WIDTH_MATCHED : null
+  //
+  // That matched spacing is only an upper bound, though — yearViewBoxWidthFor
+  // caps it at whatever still keeps the "3 Months" marker on screen at the
+  // chart's right end. Never below the 3-month chart's own viewBox width,
+  // which is narrow enough already; a viewport too small for even that would
+  // otherwise drive the computed width to nothing.
+  const yearScrollViewportPx = yearWidth ? yearWidth - AXIS_PANEL_WIDTH : null
+  const yearScrollViewBoxWidth = scale && yearScrollViewportPx > 0
+    ? Math.max(
+        THREE_MO_VIEWBOX_WIDTH,
+        Math.min(YEAR_VIEWBOX_WIDTH_MATCHED, yearViewBoxWidthFor(yearScrollViewportPx / scale)),
+      )
+    : YEAR_VIEWBOX_WIDTH_MATCHED
+  const yearPixelWidth = scale ? scale * yearScrollViewBoxWidth : null
+
+  // Opens on the most recent weeks (the chart's right edge) instead of a year
+  // ago — that end is what the chart is actually being opened to check. Runs
+  // again whenever the rendered width changes (first paint, rotation, resize),
+  // since scrollWidth isn't meaningful until the chart has been laid out.
+  const yearScrollRef = useRef(null)
+  useEffect(() => {
+    const el = yearScrollRef.current
+    if (!el) return
+    // Overshooting is clamped to the maximum scroll offset by the browser.
+    el.scrollLeft = el.scrollWidth
+  }, [weeklyYear, yearPixelWidth, isPhone])
 
   useEffect(() => {
     function onKey(e) { if (e.key === 'Escape') close() }
@@ -806,12 +887,12 @@ export default function GraphsModal({ onClose }) {
                     boundaryIndex={YEAR_BOUNDARY_INDEX}
                     axisOnly
                   />
-                  <div className="graph-year-scroll">
+                  <div className="graph-year-scroll" ref={yearScrollRef}>
                     <WeeklyDurationChart
                       points={weeklyYear}
-                      width={YEAR_VIEWBOX_WIDTH_MATCHED}
+                      width={yearScrollViewBoxWidth}
                       height={260}
-                      pixelWidth={yearMatchedPixelWidth}
+                      pixelWidth={yearPixelWidth}
                       pixelHeight={threeMoSize.height}
                       boundaryIndex={YEAR_BOUNDARY_INDEX}
                       showYAxisLabels={false}
