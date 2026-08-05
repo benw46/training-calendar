@@ -727,13 +727,13 @@ body {
 }
 
 .mobile-day-view .workout-card__name {
-  font-size: 15px;
+  font-size: 17px;
 }
 
 .mobile-day-view .workout-card__description,
 .mobile-day-view .workout-card__exercises,
 .mobile-day-view .workout-card__countdown {
-  font-size: 13px;
+  font-size: 15px;
 }
 
 /* .workout-card__actual/__planned are `display: contents`, so they have no
@@ -741,7 +741,7 @@ body {
    value spans that the grid actually lays out. */
 .mobile-day-view .workout-card__actual,
 .mobile-day-view .workout-card__planned {
-  font-size: 13px;
+  font-size: 15px;
 }
 
 .mobile-summary-panel .summary-row__label,
