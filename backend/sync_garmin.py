@@ -40,7 +40,7 @@ logger = logging.getLogger("sync_garmin")
 COMMIT_BATCH_SIZE = 20
 DEFAULT_LOOKBACK_DAYS = 90
 MAX_LOOKBACK_DAYS = 365
-SYNC_OVERLAP_DAYS = 14
+SYNC_OVERLAP_DAYS = 45
 
 # Per-kilometre splits cost one extra Garmin API call per activity, so they're
 # only fetched for runs from this fixed date onward (per user request, not a
@@ -250,6 +250,10 @@ def run_sync():
     # Watermark tracks the latest activity date Garmin has actually returned,
     # not when a sync ran - so a late-uploaded activity can't fall outside the
     # window we scan. Overlap re-checks the trailing SYNC_OVERLAP_DAYS.
+    # That overlap is what covers late uploads from a second device: when the
+    # watch keeps uploading normally the watermark tracks ~today, so the window
+    # collapses to the trailing overlap and anything uploaded later than that
+    # (e.g. from the bike computer) would be missed entirely.
     if row and row["data_watermark"]:
         watermark_date = date.fromisoformat(row["data_watermark"])
         start_date = max(watermark_date - timedelta(days=SYNC_OVERLAP_DAYS), earliest_allowed)
