@@ -934,6 +934,14 @@ body {
   overflow-wrap: break-word;
 }
 
+/* A ticked exercise goes green, overriding the grey the list sets on its own
+   li's. Colour only — deliberately not the bold that the modal's Exercises
+   table uses (.gym-exercises__input--done); at 11px in a packed card, weight
+   on top of colour was too heavy. */
+.workout-card__exercises li.workout-card__exercise--done {
+  color: #16a34a;
+}
+
 .workout-card__countdown {
   font-size: 11px;
   font-weight: 700;

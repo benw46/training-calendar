@@ -71,7 +71,9 @@ export default function WorkoutCard({
         {isStrength && workout.gym_exercises?.length > 0 && (
           <ul className="workout-card__exercises">
             {workout.gym_exercises.map((ex, i) => (
-              <li key={i}>{fmtExercise(ex)}</li>
+              <li key={i} className={ex.done ? 'workout-card__exercise--done' : undefined}>
+                {fmtExercise(ex)}
+              </li>
             ))}
           </ul>
         )}
@@ -79,7 +81,9 @@ export default function WorkoutCard({
         {distanceExercises?.length > 0 && (
           <ul className="workout-card__exercises">
             {distanceExercises.map((ex, i) => (
-              <li key={i}>{fmtDistanceExercise(ex)}</li>
+              <li key={i} className={ex.done ? 'workout-card__exercise--done' : undefined}>
+                {fmtDistanceExercise(ex)}
+              </li>
             ))}
           </ul>
         )}
