@@ -1333,11 +1333,19 @@ body {
   display: flex;
   flex-direction: column;
   gap: 16px;
-  overflow: hidden;
+  /* This column's height is pinned by an inline style to the 3-month chart's
+     height so the two side-by-side columns line up. When the two tables need
+     more room than that, scroll — clipping would silently hide rows off the
+     bottom of the second table. */
+  overflow-y: auto;
 }
 
 .graph-panel--table-block {
-  min-height: 0;
+  /* Must NOT shrink below its content. These blocks don't clip, so a squeezed
+     block renders its table past its own box and over the next block's
+     heading — which is exactly what a fixed-height flex column does to
+     children that are allowed to shrink. */
+  flex-shrink: 0;
 }
 
 .graph-panel--chart-3mo {
@@ -1411,8 +1419,9 @@ body {
     grid-column: 1;
     grid-row: 1;
     /* Desktop pins this column's height to match the 3-month chart via an
-       inline style (so the two side-by-side columns line up) and clips any
-       overflow — irrelevant once everything stacks in one column instead. */
+       inline style (so the two side-by-side columns line up) and scrolls any
+       overflow — irrelevant once everything stacks in one column instead, so
+       let it take its natural height and drop the scroll container. */
     height: auto !important;
     overflow: visible;
   }

@@ -11,6 +11,27 @@ const WEEKS_YEAR = 52
 // two weekly dots rather than through one.
 const YEAR_BOUNDARY_INDEX = WEEKS_YEAR - WEEKS_3MO - 0.5
 const THREE_MO_VIEWBOX_WIDTH = 340 // must match the default `width` used for the 3-month chart below
+// Sets how tall the whole Graphs modal is. Chart width is capped by CSS
+// (.graph-panel--chart-3mo .weekly-chart), so the rendered pixel height is
+// width x (this / THREE_MO_VIEWBOX_WIDTH) — raise this and the charts get
+// taller without getting wider, and text keeps its on-screen size because the
+// px-per-viewBox-unit scale is set by the unchanged width. Everything else
+// follows: the year chart derives its height from the 3-month chart's, and the
+// Personal Bests column is pinned to it.
+const CHART_VIEWBOX_HEIGHT = 330
+// The year chart used to render at exactly the 3-month chart's pixel height.
+// It's the full width of the modal, so it doesn't need that much vertical room
+// to stay readable — this trims it back as the cheapest way to shorten the
+// modal overall without touching the 3-month chart or the Personal Bests
+// column, whose height is pinned to it.
+const YEAR_HEIGHT_RATIO = 0.75
+// Must be applied to the year chart's viewBox height, not just to the pixel
+// box it renders into. The SVG uses the default preserveAspectRatio, so it
+// scales by min(pxW/viewBoxW, pxH/viewBoxH) — shrinking only the pixel height
+// makes the vertical term the smaller one, and the chart scales down
+// horizontally too and sits letterboxed in its box. Shrinking both keeps the
+// two terms equal, so the chart gets shorter and nothing else moves.
+const YEAR_VIEWBOX_HEIGHT = CHART_VIEWBOX_HEIGHT * YEAR_HEIGHT_RATIO
 // Shared with WeeklyDurationChart's own `padding` — pulled out here so the
 // phone-mode width math below can reproduce its per-point x spacing exactly.
 const CHART_PADDING_LEFT = 38
@@ -341,7 +362,7 @@ function PersonalBestsTable({ records }) {
   )
 }
 
-function WeeklyDurationChart({ points, ariaLabel, width = 340, height = 260, svgRef, boundaryIndex, pixelWidth, pixelHeight, axisOnly = false, showYAxisLabels = true }) {
+function WeeklyDurationChart({ points, ariaLabel, width = 340, height = CHART_VIEWBOX_HEIGHT, svgRef, boundaryIndex, pixelWidth, pixelHeight, axisOnly = false, showYAxisLabels = true }) {
   const [hoverIndex, setHoverIndex] = useState(null)
 
   const padding = { top: boundaryIndex != null ? 26 : 16, right: CHART_PADDING_RIGHT, bottom: 34, left: CHART_PADDING_LEFT }
@@ -513,7 +534,7 @@ function WeeklyDurationChart({ points, ariaLabel, width = 340, height = 260, svg
   )
 }
 
-function WeeklyDurationBySportChart({ points, ariaLabel, width = 340, height = 260, svgRef }) {
+function WeeklyDurationBySportChart({ points, ariaLabel, width = 340, height = CHART_VIEWBOX_HEIGHT, svgRef }) {
   const [hoverIndex, setHoverIndex] = useState(null)
 
   const padding = { top: 16, right: 12, bottom: 34, left: 38 }
@@ -704,8 +725,10 @@ export default function GraphsModal({ onClose }) {
   }, [weekly3moBySport])
 
   const scale = threeMoSize && threeMoSize.width ? threeMoSize.width / THREE_MO_VIEWBOX_WIDTH : null
+  // Phone mode renders this SVG at a fixed pixel size; the box has to keep the
+  // same aspect as YEAR_VIEWBOX_HEIGHT or the chart letterboxes inside it.
+  const yearPixelHeight = threeMoSize ? threeMoSize.height * YEAR_HEIGHT_RATIO : null
   const yearViewBoxWidth  = scale && yearWidth ? yearWidth / scale : 700
-  const yearViewBoxHeight = scale && threeMoSize ? threeMoSize.height / scale : 200
 
   // Below this width the layout switches to phone mode's single-column
   // stack (see the matching @media (max-width: 700px) rule in styles.css),
@@ -881,9 +904,9 @@ export default function GraphsModal({ onClose }) {
                   <WeeklyDurationChart
                     points={weeklyYear}
                     width={AXIS_PANEL_WIDTH}
-                    height={260}
+                    height={YEAR_VIEWBOX_HEIGHT}
                     pixelWidth={AXIS_PANEL_WIDTH}
-                    pixelHeight={threeMoSize.height}
+                    pixelHeight={yearPixelHeight}
                     boundaryIndex={YEAR_BOUNDARY_INDEX}
                     axisOnly
                   />
@@ -891,9 +914,9 @@ export default function GraphsModal({ onClose }) {
                     <WeeklyDurationChart
                       points={weeklyYear}
                       width={yearScrollViewBoxWidth}
-                      height={260}
+                      height={YEAR_VIEWBOX_HEIGHT}
                       pixelWidth={yearPixelWidth}
-                      pixelHeight={threeMoSize.height}
+                      pixelHeight={yearPixelHeight}
                       boundaryIndex={YEAR_BOUNDARY_INDEX}
                       showYAxisLabels={false}
                       ariaLabel="Total workout duration per week, in hours, over the last year"
@@ -907,7 +930,7 @@ export default function GraphsModal({ onClose }) {
               <WeeklyDurationChart
                 points={weeklyYear}
                 width={yearViewBoxWidth}
-                height={yearViewBoxHeight}
+                height={YEAR_VIEWBOX_HEIGHT}
                 boundaryIndex={YEAR_BOUNDARY_INDEX}
                 ariaLabel="Total workout duration per week, in hours, over the last year"
               />
