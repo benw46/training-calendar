@@ -520,6 +520,18 @@ export default function WorkoutModal({ workout, initialDate, onClose, onSaved, o
     const errs = validate(values)
     if (Object.keys(errs).length) { setErrors(errs); return }
 
+    const actualDurationMinutes = isNoteLike ? null : parseDuration(values.actual_duration)
+    const actualDistanceKm      = isNoteLike || isStrength ? null : (values.actual_distance !== '' ? parseFloat(values.actual_distance) : null)
+
+    // The form is seeded once from `workout` when the modal opens (see
+    // initForm) and never refreshed, so it can go stale - e.g. the Garmin
+    // sync fills in the actual duration/distance in the background while
+    // the modal sits open. If we always sent these two fields, saving for
+    // an unrelated reason (a note, a planned change) would silently
+    // overwrite that fresh sync data with the modal's stale snapshot. Only
+    // send them when the user actually changed the value from what the
+    // form was seeded with; otherwise omit the key so the backend's
+    // exclude_unset leaves whatever's currently in the DB untouched.
     const payload = {
       date:                    values.date,
       sport:                   values.sport,
@@ -527,8 +539,8 @@ export default function WorkoutModal({ workout, initialDate, onClose, onSaved, o
       description:             values.description.trim() || null,
       planned_duration_minutes: isNoteLike ? null : parseDuration(values.planned_duration),
       planned_distance_km:     isNoteLike || isStrength ? null : (values.planned_distance !== '' ? parseFloat(values.planned_distance) : null),
-      actual_duration_minutes:  isNoteLike ? null : parseDuration(values.actual_duration),
-      actual_distance_km:      isNoteLike || isStrength ? null : (values.actual_distance !== '' ? parseFloat(values.actual_distance) : null),
+      actual_duration_minutes:  (isEdit && actualDurationMinutes === (workout.actual_duration_minutes ?? null)) ? undefined : actualDurationMinutes,
+      actual_distance_km:      (isEdit && actualDistanceKm === (workout.actual_distance_km ?? null)) ? undefined : actualDistanceKm,
       is_brick:                isBrickable ? values.is_brick : false,
       gym_exercises:            isStrength ? buildGymExercises(values.gym_exercises) : null,
       run_exercises:            isRun  ? buildDistanceExercises(values.distance_exercises) : null,
