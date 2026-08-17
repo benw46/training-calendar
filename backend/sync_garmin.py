@@ -297,23 +297,6 @@ def run_sync():
             try:
                 garmin_id = str(activity["activityId"])
 
-                existing = conn.execute(
-                    "SELECT id, elevation_gain_m FROM workouts WHERE garmin_activity_id = ?", (garmin_id,)
-                ).fetchone()
-                if existing:
-                    # Backfill elevation for activities matched before this
-                    # column existed (e.g. the elevation_net_m -> elevation_gain_m
-                    # rename) - the value is already in `activity`, so this
-                    # costs no extra Garmin API call.
-                    if existing["elevation_gain_m"] is None:
-                        backfill_elevation_gain_m = _elevation_gain(activity.get("elevationGain"))
-                        if backfill_elevation_gain_m is not None:
-                            conn.execute(
-                                "UPDATE workouts SET elevation_gain_m = ? WHERE id = ?",
-                                (backfill_elevation_gain_m, existing["id"]),
-                            )
-                    continue
-
                 activity_date = activity["startTimeLocal"][:10]
                 sport = _map_sport(activity.get("activityType", {}).get("typeKey", ""))
                 duration_minutes = round(activity.get("duration", 0) / 60)
@@ -321,6 +304,40 @@ def run_sync():
                 distance_km = round(raw_distance / 1000, 2) if raw_distance > 10 else None
                 activity_name = activity.get("activityName") or sport.capitalize()
                 elevation_gain_m = _elevation_gain(activity.get("elevationGain"))
+
+                existing = conn.execute(
+                    """SELECT id, elevation_gain_m, actual_duration_minutes, actual_distance_km
+                       FROM workouts WHERE garmin_activity_id = ?""",
+                    (garmin_id,),
+                ).fetchone()
+                if existing:
+                    # Backfill any of these left NULL on an already-matched row -
+                    # elevation for activities matched before that column existed
+                    # (e.g. the elevation_net_m -> elevation_gain_m rename), and
+                    # duration/distance for a row where they were since cleared
+                    # (e.g. an edit that saved stale form state over them). The
+                    # values are already in `activity`, so this costs no extra
+                    # Garmin API call.
+                    backfill_elevation_gain_m = (
+                        _elevation_gain(activity.get("elevationGain"))
+                        if existing["elevation_gain_m"] is None else None
+                    )
+                    fields, values = [], []
+                    if backfill_elevation_gain_m is not None:
+                        fields.append("elevation_gain_m = ?")
+                        values.append(backfill_elevation_gain_m)
+                    if existing["actual_duration_minutes"] is None:
+                        fields.append("actual_duration_minutes = ?")
+                        values.append(duration_minutes)
+                    if existing["actual_distance_km"] is None and distance_km is not None:
+                        fields.append("actual_distance_km = ?")
+                        values.append(distance_km)
+                    if fields:
+                        conn.execute(
+                            f"UPDATE workouts SET {', '.join(fields)} WHERE id = ?",
+                            (*values, existing["id"]),
+                        )
+                    continue
 
                 candidates = conn.execute(
                     """SELECT * FROM workouts
