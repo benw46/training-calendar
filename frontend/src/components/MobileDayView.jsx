@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
 import DayColumn from './DayColumn'
 import SummaryPanel from './SummaryPanel'
-import { addDays, toYMD, isSameDay, getMondayOf } from '../utils/dates'
+import { addDays, toYMD, isSameDay, getMondayOf, MIN_DATE, MAX_DATE } from '../utils/dates'
 import { listToByDate } from '../utils/workouts'
 import { api } from '../api/workouts'
 
@@ -63,11 +63,17 @@ export default function MobileDayView({
   }, [scrollToTodayRef, today])
 
   useEffect(() => {
-    if (jumpToDateRef) jumpToDateRef.current = (date) => setSelectedDate(date)
+    // Defensive clamp — App.jsx's month nav already stops short of
+    // MIN_DATE/MAX_DATE, but this keeps the ref itself safe regardless of
+    // what calls it.
+    if (jumpToDateRef) jumpToDateRef.current = (date) => setSelectedDate(date < MIN_DATE ? MIN_DATE : date > MAX_DATE ? MAX_DATE : date)
   }, [jumpToDateRef])
 
-  function handlePrevDay() { setSelectedDate(d => addDays(d, -1)) }
-  function handleNextDay() { setSelectedDate(d => addDays(d, 1)) }
+  function handlePrevDay() { setSelectedDate(d => { const next = addDays(d, -1); return next < MIN_DATE ? d : next }) }
+  function handleNextDay() { setSelectedDate(d => { const next = addDays(d, 1); return next > MAX_DATE ? d : next }) }
+
+  const atMinDay = selectedDate.getTime() <= MIN_DATE.getTime()
+  const atMaxDay = selectedDate.getTime() >= MAX_DATE.getTime()
 
   function handleReordered() {
     load(selectedDate)
@@ -85,7 +91,7 @@ export default function MobileDayView({
   return (
     <div className="mobile-day-view">
       <div className="mobile-day-nav">
-        <button className="mobile-day-nav__btn" onClick={handlePrevDay} aria-label="Previous day">
+        <button className="mobile-day-nav__btn" onClick={handlePrevDay} disabled={atMinDay} aria-label="Previous day">
           &lsaquo;
         </button>
         <div className="mobile-day-nav__center">
@@ -97,7 +103,7 @@ export default function MobileDayView({
           </span>
           {hasEvent && <span className="mobile-day-nav__race-day">RACE DAY</span>}
         </div>
-        <button className="mobile-day-nav__btn" onClick={handleNextDay} aria-label="Next day">
+        <button className="mobile-day-nav__btn" onClick={handleNextDay} disabled={atMaxDay} aria-label="Next day">
           &rsaquo;
         </button>
       </div>

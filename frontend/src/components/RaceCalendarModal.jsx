@@ -1,6 +1,6 @@
-import { useState, useEffect, useCallback, useMemo } from 'react'
+import { useState, useEffect, useCallback, useMemo, useRef } from 'react'
 import { api } from '../api/workouts'
-import { toYMD } from '../utils/dates'
+import { toYMD, MIN_YEAR, MAX_YEAR } from '../utils/dates'
 import WorkoutModal from './WorkoutModal'
 
 const MONTH_NAMES_SHORT = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec']
@@ -8,13 +8,17 @@ const WEEKDAY_LETTERS = ['M','T','W','T','F','S','S']
 
 // Monday-first grid of cells for one month: `null` for the leading/trailing
 // padding days outside the month, matching the Monday-start week used
-// everywhere else in the app (Calendar.jsx's DAY_NAMES).
+// everywhere else in the app (Calendar.jsx's DAY_NAMES). Always padded out
+// to a full 6 rows (42 cells) — a month only ever needs 4-6 depending on its
+// length and which weekday it starts on, but padding every month to the
+// same 6 keeps every month card's calendar the same height, so cards only
+// differ in height when one has enough events to need more room than that.
 function buildMonthCells(year, month) {
   const firstWeekday = (new Date(year, month, 1).getDay() + 6) % 7 // Mon=0..Sun=6
   const daysInMonth = new Date(year, month + 1, 0).getDate()
   const cells = Array(firstWeekday).fill(null)
   for (let d = 1; d <= daysInMonth; d++) cells.push(d)
-  while (cells.length % 7 !== 0) cells.push(null)
+  while (cells.length < 42) cells.push(null)
   return cells
 }
 
@@ -95,6 +99,13 @@ export default function RaceCalendarModal({ onClose, onWorkoutsChanged }) {
   const today = useMemo(() => { const d = new Date(); d.setHours(0, 0, 0, 0); return d }, [])
   const todayYMD = useMemo(() => toYMD(today), [today])
 
+  // Bumped on every loadEvents() call; a response only gets committed if its
+  // sequence number is still the latest one issued. Without this, flipping
+  // years quickly can let an older year's request resolve after a newer
+  // one's and silently overwrite it — showing the wrong year's events under
+  // the right year's label (mirrors MobileDayView's loadSeqRef guard).
+  const loadSeqRef = useRef(0)
+
   // Skipped while the inner add/edit form is open — that form has its own
   // Escape handler, and without this guard both would fire on the same
   // keypress, closing the form and the whole Race Calendar at once.
@@ -106,9 +117,17 @@ export default function RaceCalendarModal({ onClose, onWorkoutsChanged }) {
   }, [close, dayModal])
 
   const loadEvents = useCallback(() => {
+    const seq = ++loadSeqRef.current
     api.list(`${year}-01-01`, `${year}-12-31`)
-      .then(list => setEvents(list.filter(w => w.sport === 'event')))
-      .catch(err => setError(err.message))
+      .then(list => {
+        if (seq !== loadSeqRef.current) return
+        setEvents(list.filter(w => w.sport === 'event'))
+        setError(null)
+      })
+      .catch(err => {
+        if (seq !== loadSeqRef.current) return
+        setError(err.message)
+      })
   }, [year])
 
   useEffect(() => { loadEvents() }, [loadEvents])
@@ -159,14 +178,22 @@ export default function RaceCalendarModal({ onClose, onWorkoutsChanged }) {
 
   return (
     <div className="modal-backdrop" onClick={handleBackdrop}>
-      <div className="modal modal--wide" role="dialog" aria-modal="true">
+      <div className="modal modal--wide race-calendar-modal" role="dialog" aria-modal="true">
         <div className="modal-header">
           <h2 className="modal-title">Race Calendar</h2>
           <div className="race-calendar-year-nav">
             <button
               type="button"
               className="race-calendar-year-btn"
-              onClick={() => setYear(y => y - 1)}
+              onClick={() => setYear(Math.min(MAX_YEAR, Math.max(MIN_YEAR, today.getFullYear())))}
+            >
+              Current Year
+            </button>
+            <button
+              type="button"
+              className="race-calendar-year-btn"
+              onClick={() => setYear(y => Math.max(MIN_YEAR, y - 1))}
+              disabled={year <= MIN_YEAR}
               aria-label="Previous year"
             >
               &lsaquo;
@@ -175,7 +202,8 @@ export default function RaceCalendarModal({ onClose, onWorkoutsChanged }) {
             <button
               type="button"
               className="race-calendar-year-btn"
-              onClick={() => setYear(y => y + 1)}
+              onClick={() => setYear(y => Math.min(MAX_YEAR, y + 1))}
+              disabled={year >= MAX_YEAR}
               aria-label="Next year"
             >
               &rsaquo;

@@ -1,6 +1,6 @@
 import { useState, useEffect, useLayoutEffect, useRef, useCallback } from 'react'
 import WeekRow from './WeekRow'
-import { getMondayOf, addWeeks, addDays, toYMD } from '../utils/dates'
+import { getMondayOf, addWeeks, addDays, toYMD, MIN_DATE, MAX_DATE } from '../utils/dates'
 import { listToByDate } from '../utils/workouts'
 import { api } from '../api/workouts'
 
@@ -14,6 +14,10 @@ const ROOT_MARGIN   = '150px'
 // badge in SummaryPanel, without which its topmost row would have no
 // predecessor to compare against).
 const LOOKBACK_DAYS = 7
+// The Mondays that bound infinite scroll — computed once, outside the
+// component, since MIN_DATE/MAX_DATE are fixed constants.
+const MIN_MONDAY = getMondayOf(MIN_DATE)
+const MAX_MONDAY = getMondayOf(MAX_DATE)
 
 export default function Calendar({
   onDayClick, onCardClick,
@@ -120,7 +124,11 @@ export default function Calendar({
   useEffect(() => { if (reloadRef) reloadRef.current = reload }, [reloadRef, reload])
 
   // ── Jump to an arbitrary date ─────────────────────────────────
-  const jumpToDate = useCallback(async (targetDate) => {
+  const jumpToDate = useCallback(async (targetDateRaw) => {
+    // Defensive clamp — callers (App.jsx's month nav) already stop short of
+    // MIN_DATE/MAX_DATE, but this keeps jumpToDate itself safe regardless of
+    // what calls it.
+    const targetDate = targetDateRaw < MIN_DATE ? MIN_DATE : targetDateRaw > MAX_DATE ? MAX_DATE : targetDateRaw
     const targetMonday = getMondayOf(targetDate)
     const targetYMD    = toYMD(targetMonday)
 
@@ -204,10 +212,17 @@ export default function Calendar({
     if (loadingRef.current) return
     loadingRef.current = true
     try {
-      const ws       = weeksRef.current
-      const newWeeks = direction === 'up'
+      const ws        = weeksRef.current
+      const rawWeeks  = direction === 'up'
         ? Array.from({ length: BATCH }, (_, i) => addWeeks(ws[0], i - BATCH))
         : Array.from({ length: BATCH }, (_, i) => addWeeks(ws[ws.length - 1], i + 1))
+      // Clamped to MIN_MONDAY/MAX_MONDAY — near a bound this trims the batch
+      // down (possibly to nothing), so scrolling can't load weeks outside
+      // [MIN_DATE, MAX_DATE] the way the month-nav buttons already can't.
+      const newWeeks  = direction === 'up'
+        ? rawWeeks.filter(w => w >= MIN_MONDAY)
+        : rawWeeks.filter(w => w <= MAX_MONDAY)
+      if (newWeeks.length === 0) return
 
       // Only 'up' establishes a new earliest rendered week, so only it needs
       // the extra lookback week fetched (see LOOKBACK_DAYS above).

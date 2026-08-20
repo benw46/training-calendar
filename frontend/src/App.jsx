@@ -7,7 +7,7 @@ import MobileDayView from './components/MobileDayView'
 import RaceCalendarModal from './components/RaceCalendarModal'
 import WorkoutModal from './components/WorkoutModal'
 import { api } from './api/workouts'
-import { formatSyncedAt } from './utils/dates'
+import { formatSyncedAt, MIN_YEAR, MAX_YEAR, MIN_DATE, MAX_DATE } from './utils/dates'
 import { supabase } from './supabaseClient'
 
 const MONTH_NAMES = ['January','February','March','April','May','June','July','August','September','October','November','December']
@@ -222,14 +222,22 @@ export default function App() {
 
   function handlePrevMonth() {
     const d = new Date(visibleMonth.getFullYear(), visibleMonth.getMonth() - 1, 1)
+    if (d < MIN_DATE) return
     setVisibleMonth(d)
     jumpToDateRef.current?.(d)
   }
   function handleNextMonth() {
     const d = new Date(visibleMonth.getFullYear(), visibleMonth.getMonth() + 1, 1)
+    if (d > MAX_DATE) return
     setVisibleMonth(d)
     jumpToDateRef.current?.(d)
   }
+
+  // Drives disabling the ‹ › month-nav buttons at the same bounds — >=/<=
+  // rather than ===, so this stays correct even if visibleMonth somehow
+  // ended up past a bound rather than exactly on it.
+  const atMinMonth = visibleMonth.getFullYear() <= MIN_YEAR && visibleMonth.getMonth() === 0
+  const atMaxMonth = visibleMonth.getFullYear() >= MAX_YEAR && visibleMonth.getMonth() === 11
 
   // Hooks above this point must always run regardless of auth state, so the
   // login gate happens here rather than as an early return at the top.
@@ -241,11 +249,11 @@ export default function App() {
   // differs.
   const monthNav = (
     <div className="month-nav">
-      <button className="month-nav__btn" onClick={handlePrevMonth} aria-label="Previous month">
+      <button className="month-nav__btn" onClick={handlePrevMonth} disabled={atMinMonth} aria-label="Previous month">
         &lsaquo;
       </button>
       <span className="month-nav__label">{monthLabel}</span>
-      <button className="month-nav__btn" onClick={handleNextMonth} aria-label="Next month">
+      <button className="month-nav__btn" onClick={handleNextMonth} disabled={atMaxMonth} aria-label="Next month">
         &rsaquo;
       </button>
     </div>

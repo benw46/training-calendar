@@ -180,8 +180,13 @@ body {
   transition: background 0.15s;
 }
 
-.month-nav__btn:hover {
+.month-nav__btn:hover:not(:disabled) {
   background: rgba(255,255,255,0.2);
+}
+
+.month-nav__btn:disabled {
+  opacity: 0.4;
+  cursor: default;
 }
 
 .month-nav__label {
@@ -429,6 +434,11 @@ body {
 
 .mobile-day-nav__btn:active {
   background: #eaecf0;
+}
+
+.mobile-day-nav__btn:disabled {
+  opacity: 0.4;
+  cursor: default;
 }
 
 /* Wraps the label and the RACE DAY badge together as a column so the badge
@@ -1605,6 +1615,27 @@ body {
 
 /* ── Race Calendar modal ──────────────────────────────────── */
 
+/* Different months need 4-6 grid rows for their days, and different years
+   carry different numbers of events, so the content's natural height varies
+   year to year — without this, switching years would resize the whole
+   modal to match. Pinning height to .modal's own max-height (rather than
+   leaving it to size to content) means it's always exactly as tall as it's
+   ever allowed to be, so it never grows or shrinks when the year changes.
+   .modal's own overflow-y: auto is overridden to hidden here — with a fixed
+   height, .race-calendar-body scrolling internally (below) is enough, and
+   without this override the modal itself would *also* try to scroll,
+   carrying the header out of view along with it. */
+.race-calendar-modal {
+  height: calc(100vh - 48px);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.race-calendar-modal .modal-header {
+  flex: 0 0 auto;
+}
+
 .race-calendar-year-nav {
   display: flex;
   align-items: center;
@@ -1623,8 +1654,13 @@ body {
   transition: background 0.15s;
 }
 
-.race-calendar-year-btn:hover {
+.race-calendar-year-btn:hover:not(:disabled) {
   background: #e5e7eb;
+}
+
+.race-calendar-year-btn:disabled {
+  opacity: 0.4;
+  cursor: default;
 }
 
 .race-calendar-year-label {
@@ -1641,6 +1677,13 @@ body {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
   gap: 24px 28px;
+  /* The scrolling region within the fixed-height .race-calendar-modal above
+     — flex-basis 0 plus min-height: 0 is what lets a grid this tall actually
+     shrink to the space .modal-header leaves it, instead of a flex item's
+     default min-height: auto forcing the modal to grow to fit it. */
+  flex: 1 1 0;
+  min-height: 0;
+  overflow-y: auto;
 }
 
 .race-month {

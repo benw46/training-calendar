@@ -1,3 +1,11 @@
+// Shared bounds for every date-navigation control in the app (main calendar
+// month nav, day paging, and the Race Calendar's year nav) — arbitrary but
+// generous limits so navigation can't run away indefinitely.
+export const MIN_YEAR = 1999
+export const MAX_YEAR = 2100
+export const MIN_DATE = new Date(MIN_YEAR, 0, 1)
+export const MAX_DATE = new Date(MAX_YEAR, 11, 31)
+
 export function getMondayOf(date) {
   const d = new Date(date)
   d.setHours(0, 0, 0, 0)
