@@ -17,7 +17,7 @@ const LOOKBACK_DAYS = 7
 
 export default function Calendar({
   onDayClick, onCardClick,
-  reloadRef, scrollToTodayRef, jumpToDateRef, onMonthChange, onWorkoutsChanged,
+  reloadRef, scrollToTodayRef, jumpToDateRef, onMonthChange,
 }) {
   const today = new Date()
   today.setHours(0, 0, 0, 0)
@@ -118,14 +118,6 @@ export default function Calendar({
   }, [])
 
   useEffect(() => { if (reloadRef) reloadRef.current = reload }, [reloadRef, reload])
-
-  // A drag-and-drop reorder/move happens entirely inside DayColumn and never
-  // goes through App's own handlers, so it has to poke onWorkoutsChanged
-  // itself to keep things like the "next event" banner in sync.
-  const handleReordered = useCallback(() => {
-    reload()
-    onWorkoutsChanged?.()
-  }, [reload, onWorkoutsChanged])
 
   // ── Jump to an arbitrary date ─────────────────────────────────
   const jumpToDate = useCallback(async (targetDate) => {
@@ -299,7 +291,7 @@ export default function Calendar({
                   workoutsByDate={workoutsByDate}
                   onDayClick={onDayClick}
                   onCardClick={onCardClick}
-                  onReordered={handleReordered}
+                  onReordered={reload}
                 />
               </div>
             )

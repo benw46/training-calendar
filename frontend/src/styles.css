@@ -28,9 +28,8 @@ body {
 .app-header {
   display: grid;
   /* .app-header__controls' "auto" column greedily grows to fit its content
-     (the event banner cycles through race names of very different lengths)
      before .app-header__end's column gets whatever's left — with a bare
-     1fr there, a long enough race name could squeeze .app-header__end down
+     1fr there, a narrow viewport could squeeze .app-header__end down
      to nothing, right up against/underneath Graphs/Sync. The minmax floor
      guarantees .app-header__end always keeps at least this much before
      controls can claim more, deferring to controls' own horizontal scroll
@@ -50,9 +49,8 @@ body {
      .app-header__end--merged, which is what actually pins the second bar
      flush against the first (column-gap: 0 below just means "flush" is
      possible — the two bars touching isn't otherwise guaranteed to happen
-     at any particular width, since it depends on the live event banner
-     text and last-synced string, not something a static breakpoint could
-     target). */
+     at any particular width, since it depends on the live last-synced
+     string, not something a static breakpoint could target). */
   grid-template-columns: auto 1px minmax(200px, 1fr);
   /* 0, not a fixed gap: lets the two divider bars (see above) end up
      perfectly flush once .app-header__end--merged forces its first child's
@@ -69,7 +67,6 @@ body {
   flex-shrink: 0;
 }
 
-.app-header__event-banner-wrap,
 .app-header__controls,
 .app-header__end,
 .color-legend {
@@ -90,7 +87,7 @@ body {
   /* justify-self stays at its default (stretch) deliberately — `end`
      sizes the box to its own content instead of the grid cell, which is
      fine while there's slack (it just hugs the column's right edge) but
-     once content is wider than the cell (a long event banner line
+     once content is wider than the cell (a narrow viewport
      squeezing this column down), a non-stretch box doesn't get clamped to
      the cell at all: it renders at its full content width regardless,
      overflowing left into .app-header__controls rather than scrolling
@@ -142,39 +139,6 @@ body {
   white-space: nowrap;
 }
 
-.app-header__event-banner-wrap {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
-.app-header__event-banner {
-  display: block;
-  position: relative;
-  height: 16px;
-  overflow: hidden;
-  font-size: 14px;
-  font-weight: 600;
-  color: #fff;
-  white-space: nowrap;
-}
-
-.app-header__event-banner-strip {
-  display: flex;
-  flex-direction: column;
-  transition: transform 0.6s ease;
-}
-
-.app-header__event-banner-line {
-  height: 16px;
-  line-height: 16px;
-  /* The strip (column flex, default align-items: stretch) sizes every line
-     to the width of the longest one so the ticker doesn't jump width as it
-     cycles — without this, shorter lines just sit left-aligned inside that
-     shared width instead of centered within it. */
-  text-align: center;
-}
-
 .app-header__controls {
   display: flex;
   align-items: center;
@@ -190,7 +154,7 @@ body {
      one scrollable line the way there is on desktop. */
   overflow-x: auto;
   overflow-y: hidden;
-  /* Space between the event banner and the divider bar right after it —
+  /* Space between the month nav and the divider bar right after it —
      see the column-gap: 0 comment on .app-header for why this can't just
      be a grid column-gap any more. */
   padding-right: 8px;
@@ -285,6 +249,22 @@ body {
   background: rgba(255,255,255,0.2);
 }
 
+.app-header__race-calendar-btn {
+  font-size: 13px;
+  font-weight: 600;
+  color: rgba(255,255,255,0.9);
+  background: rgba(255,255,255,0.12);
+  border: 1px solid rgba(255,255,255,0.25);
+  border-radius: 4px;
+  padding: 4px 12px;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.app-header__race-calendar-btn:hover {
+  background: rgba(255,255,255,0.2);
+}
+
 .app-header__signout-btn {
   font-size: 13px;
   font-weight: 600;
@@ -326,33 +306,9 @@ body {
   position: relative;
 }
 
-.app-header__mobile-banner {
-  display: flex;
-  justify-content: center;
-  /* Matched on both sides (rather than just the right, where the reload/info
-     icons sit) so the reserved space is symmetric — an asymmetric right-only
-     padding would shift the centered text off the banner's true midpoint.
-     Still keeps a long race name clear of the icons pinned top-right
-     (.app-header--mobile .color-legend-group). */
-  padding: 0 46px;
-  /* Same reasoning as .app-header__mobile-row's min-width: 0 — a long race
-     name is nowrap and would otherwise set this row's min-width to its own
-     content width instead of the stretched container width. */
-  min-width: 0;
-}
-
 .app-header--mobile .month-nav {
   justify-content: center;
   min-width: 0;
-}
-
-/* A long race name is nowrap, so without this the wrap's default
-   content-based min-width could push it past .app-header__mobile-banner's
-   (already shrunk) width — clip it instead of letting it overflow the
-   viewport. */
-.app-header--mobile .app-header__event-banner-wrap {
-  min-width: 0;
-  overflow: hidden;
 }
 
 .app-header__mobile-row {
@@ -365,14 +321,15 @@ body {
   min-width: 0;
 }
 
-/* Today/Graphs/Sync/Sign-out only need to match each other's size in this
-   layout — desktop packs them into one horizontally-scrolling line where
-   uniform width would waste space on the short labels (Today, Graphs). Two
-   buttons per row, each flex: 1 1 0 with both rows the same overall width,
-   so all four end up identically sized without hardcoding a width that
-   would otherwise need to accommodate "Sync from Garmin" specifically. */
+/* These only need to match each other's size within their own row — desktop
+   packs them into one horizontally-scrolling line where uniform width would
+   waste space on the short labels (Today, Graphs). Each row's buttons share
+   flex: 1 1 0, so a row of two splits it evenly without hardcoding a width
+   that would otherwise need to accommodate "Sync from Garmin" specifically;
+   Sign out gets a row to itself and so spans the full width. */
 .app-header--mobile .app-header__today-btn,
 .app-header--mobile .app-header__graphs-btn,
+.app-header--mobile .app-header__race-calendar-btn,
 .app-header--mobile .app-header__sync-btn,
 .app-header--mobile .app-header__signout-btn {
   flex: 1 1 0;
@@ -1644,6 +1601,196 @@ body {
 .modal-close:hover {
   background: #f3f4f6;
   color: #374151;
+}
+
+/* ── Race Calendar modal ──────────────────────────────────── */
+
+.race-calendar-year-nav {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.race-calendar-year-btn {
+  font-size: 13px;
+  font-weight: 600;
+  color: #374151;
+  background: #f3f4f6;
+  border: 1px solid #e5e7eb;
+  border-radius: 4px;
+  padding: 4px 10px;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.race-calendar-year-btn:hover {
+  background: #e5e7eb;
+}
+
+.race-calendar-year-label {
+  font-size: 14px;
+  font-weight: 700;
+  color: #111827;
+  min-width: 40px;
+  text-align: center;
+  user-select: none;
+}
+
+.race-calendar-body {
+  padding: 16px 20px 20px;
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 24px 28px;
+}
+
+.race-month {
+  min-width: 0;
+  display: flex;
+  align-items: stretch;
+  gap: 14px;
+}
+
+/* Fixed rather than flexible — the day grid reads as squares (aspect-ratio:
+   1 below), so it should stay a consistent size instead of stretching with
+   whatever room .race-month__events doesn't need. */
+.race-month__calendar {
+  flex: 0 0 150px;
+  width: 150px;
+}
+
+.race-month__divider {
+  flex: 0 0 1px;
+  align-self: stretch;
+  background: #eaecf0;
+}
+
+.race-month__events {
+  flex: 1 1 auto;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  /* Roughly lines up with the top of the day grid, below the month title
+     and weekday row it sits beside. */
+  padding-top: 22px;
+}
+
+.race-month__events-empty {
+  font-size: 11px;
+  color: #9ca3af;
+  font-style: italic;
+}
+
+.race-month__event {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  width: 100%;
+  text-align: left;
+  font-family: inherit;
+  background: none;
+  border: none;
+  border-radius: 4px;
+  padding: 3px 6px;
+  cursor: pointer;
+  transition: background 0.1s;
+}
+
+.race-month__event:hover {
+  background: #f3f4f6;
+}
+
+.race-month__event-name {
+  font-size: 11px;
+  font-weight: 700;
+  color: #92400e;
+  max-width: 100%;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.race-month__event-countdown {
+  font-size: 10px;
+  color: #6b7280;
+}
+
+.race-month__title {
+  font-size: 12px;
+  font-weight: 700;
+  color: #374151;
+  text-align: center;
+  margin-bottom: 6px;
+}
+
+.race-month__weekdays {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  margin-bottom: 2px;
+}
+
+.race-month__weekday {
+  font-size: 9px;
+  font-weight: 600;
+  color: #9ca3af;
+  text-align: center;
+}
+
+.race-month__days {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 2px;
+}
+
+.race-month__day {
+  aspect-ratio: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: inherit;
+  font-size: 10px;
+  color: #374151;
+  background: none;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: background 0.1s, color 0.1s;
+}
+
+.race-month__day:hover {
+  background: #f3f4f6;
+}
+
+.race-month__day--empty {
+  cursor: default;
+  pointer-events: none;
+}
+
+.race-month__day--today {
+  font-weight: 700;
+  box-shadow: inset 0 0 0 1.5px #2563eb;
+}
+
+.race-month__day--event {
+  background: #fef3c7;
+  color: #92400e;
+  font-weight: 700;
+}
+
+.race-month__day--event:hover {
+  background: #fde68a;
+}
+
+/* Below this width the modal (.modal--wide) is already clamped down to the
+   viewport by .modal's own max-width, so three months per row — each one a
+   day grid *and* an event list side by side — would squeeze past
+   readability. Drop to one, matching the phone breakpoint used throughout
+   the rest of the app (MOBILE_BREAKPOINT in App.jsx). */
+@media (max-width: 700px) {
+  .race-calendar-body {
+    grid-template-columns: 1fr;
+    gap: 16px;
+  }
 }
 
 .modal-form {

@@ -175,7 +175,7 @@ function initDistanceExercises(exercises) {
   }))
 }
 
-function initForm(workout, initialDate) {
+function initForm(workout, initialDate, initialSport) {
   if (workout) {
     return {
       date:               workout.date,
@@ -197,7 +197,7 @@ function initForm(workout, initialDate) {
   }
   return {
     date:             toDateInputValue(initialDate),
-    sport:            'run',
+    sport:            initialSport ?? 'run',
     name:             '',
     description:      '',
     planned_duration: '',
@@ -241,9 +241,9 @@ function buildDistanceExercises(rows) {
     }))
 }
 
-export default function WorkoutModal({ workout, initialDate, onClose, onSaved, onDeleted }) {
+export default function WorkoutModal({ workout, initialDate, initialSport, onClose, onSaved, onDeleted }) {
   const isEdit = Boolean(workout)
-  const [form, setForm] = useState(() => initForm(workout, initialDate))
+  const [form, setForm] = useState(() => initForm(workout, initialDate, initialSport))
   const [errors, setErrors] = useState({})
   const [saving, setSaving] = useState(false)
   const [deleting, setDeleting] = useState(false)

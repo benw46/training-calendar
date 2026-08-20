@@ -36,9 +36,6 @@ export const api = {
   list: (start, end) =>
     request(`/workouts/?start=${start}&end=${end}`),
 
-  getNextEvents: (limit = 3) =>
-    request(`/workouts/next-events?limit=${limit}`),
-
   create: (data) =>
     request('/workouts/', {
       method: 'POST',

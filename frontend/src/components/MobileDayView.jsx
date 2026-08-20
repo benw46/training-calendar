@@ -7,7 +7,7 @@ import { api } from '../api/workouts'
 
 export default function MobileDayView({
   reloadRef, scrollToTodayRef, jumpToDateRef, onMonthChange,
-  onDayClick, onCardClick, onWorkoutsChanged,
+  onDayClick, onCardClick,
 }) {
   const [today] = useState(() => {
     const t = new Date()
@@ -71,7 +71,6 @@ export default function MobileDayView({
 
   function handleReordered() {
     load(selectedDate)
-    onWorkoutsChanged?.()
   }
 
   const workouts = workoutsByDate[toYMD(selectedDate)] ?? []

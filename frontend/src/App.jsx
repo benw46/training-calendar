@@ -1,10 +1,10 @@
-import { useRef, useState, useCallback, useEffect, useMemo } from 'react'
+import { useRef, useState, useCallback, useEffect } from 'react'
 import Calendar from './components/Calendar'
 import ColorLegend from './components/ColorLegend'
-import EventBanner from './components/EventBanner'
 import GraphsModal from './components/GraphsModal'
 import Login from './components/Login'
 import MobileDayView from './components/MobileDayView'
+import RaceCalendarModal from './components/RaceCalendarModal'
 import WorkoutModal from './components/WorkoutModal'
 import { api } from './api/workouts'
 import { formatSyncedAt } from './utils/dates'
@@ -41,9 +41,9 @@ const MOBILE_BREAKPOINT = 700
 // .app-header__end) are meant to merge into one flush line once
 // .app-header__end has no room left to right-hug into. Relying on the CSS
 // auto-margin to coincidentally land on exactly 0 is too fragile — it's at
-// the mercy of the current event banner text length, the current
-// last-synced string, and .app-header__end's own 200px minmax floor, any
-// of which can leave a several-px sliver that never quite closes. Measuring
+// the mercy of the current last-synced string and .app-header__end's own
+// 200px minmax floor, either of which can leave a several-px sliver that
+// never quite closes. Measuring
 // the real slack and snapping it to 0 below a small threshold guarantees a
 // clean binary "clearly separate" or "fully merged" instead of a state
 // that's neither.
@@ -95,9 +95,8 @@ function useHeaderEndSlack() {
     if (!controlsEl || !endEl) return
 
     // Observes both: endEl's own box changes with window/grid resizes,
-    // while controlsEl's box changes with the event banner's cycling text
-    // (its "auto" grid track sizes to content) — either can change how
-    // much slack endEl has left.
+    // while controlsEl's box changes with its own "auto" grid track sizing
+    // to content — either can change how much slack endEl has left.
     const observer = new ResizeObserver(recompute)
     observer.observe(controlsEl)
     observer.observe(endEl)
@@ -157,24 +156,10 @@ export default function App() {
   const [syncMsg, setSyncMsg] = useState(null)
   const [lastSynced, setLastSynced] = useState(null)
   const [piOnline, setPiOnline] = useState(null)  // null = not yet checked
-  const [nextEvents, setNextEvents] = useState([])
   const [showGraphs, setShowGraphs] = useState(false)
+  const [showRaceCalendar, setShowRaceCalendar] = useState(false)
 
   const monthLabel = `${MONTH_NAMES[visibleMonth.getMonth()]} ${visibleMonth.getFullYear()}`
-
-  // Memoized so the array reference only changes when the fetched events
-  // actually change — EventBanner's ticker interval keys off this reference
-  // and would restart every render (never advancing) if it were rebuilt
-  // fresh each time.
-  const eventBannerLines = useMemo(() => {
-    if (nextEvents.length === 0) return ['No Event Planned']
-    const today = new Date()
-    today.setHours(0, 0, 0, 0)
-    return nextEvents.map(ev => {
-      const daysUntil = Math.round((new Date(ev.date + 'T00:00:00') - today) / 86400000)
-      return daysUntil === 0 ? `${ev.name} today` : `${daysUntil} days until ${ev.name}`
-    })
-  }, [nextEvents])
 
   // A sync may have happened in a previous session, so read the persisted
   // timestamp on mount rather than only tracking it after a sync in this one.
@@ -201,15 +186,6 @@ export default function App() {
     return () => { active = false; clearInterval(id) }
   }, [session])
 
-  const refreshNextEvents = useCallback(() => {
-    api.getNextEvents(3).then(setNextEvents).catch(() => {})
-  }, [])
-
-  useEffect(() => {
-    if (!session) return
-    refreshNextEvents()
-  }, [session, refreshNextEvents])
-
   async function handleGarminSync() {
     setSyncing(true)
     setSyncMsg(null)
@@ -223,7 +199,6 @@ export default function App() {
         setLastSynced(r.last_synced_at)
         setPiOnline(true)   // a completed sync proves the Pi is up
         reloadRef.current?.()
-        refreshNextEvents()
       } else {
         setSyncMsg('Sync queued — it will run when your Pi is next online')
         setPiOnline(false)  // nothing came back in time → Pi looks offline
@@ -238,8 +213,8 @@ export default function App() {
 
   function handleDayClick(date)     { setModal({ type: 'add', date }) }
   function handleCardClick(workout) { setModal({ type: 'edit', workout }) }
-  function handleSaved()   { setModal(null); reloadRef.current?.(); refreshNextEvents() }
-  function handleDeleted() { setModal(null); reloadRef.current?.(); refreshNextEvents() }
+  function handleSaved()   { setModal(null); reloadRef.current?.() }
+  function handleDeleted() { setModal(null); reloadRef.current?.() }
 
   const handleMonthChange = useCallback((date) => {
     setVisibleMonth(new Date(date.getFullYear(), date.getMonth(), 1))
@@ -283,13 +258,10 @@ export default function App() {
         // desktop one below: the desktop layout's two groups
         // (.app-header__controls / .app-header__end) each wrap as a unit on
         // narrow screens, which can't produce the specific row-by-row order
-        // requested here (banner, then month nav, then Today+Graphs, then
-        // Sync+Sign out) since that interleaves elements from both groups.
+        // requested here (month nav, then Today+Graphs, then Race
+        // Calendar+Sync, then Sign out) since that interleaves elements from
+        // both groups.
         <header className="app-header app-header--mobile">
-          <div className="app-header__mobile-banner">
-            <EventBanner lines={eventBannerLines} />
-          </div>
-
           {monthNav}
 
           <div className="app-header__mobile-row">
@@ -309,12 +281,21 @@ export default function App() {
 
           <div className="app-header__mobile-row">
             <button
+              className="app-header__race-calendar-btn"
+              onClick={() => setShowRaceCalendar(true)}
+            >
+              Race Calendar
+            </button>
+            <button
               className="app-header__sync-btn"
               onClick={handleGarminSync}
               disabled={syncing}
             >
               {syncing ? 'Syncing…' : 'Sync from Garmin'}
             </button>
+          </div>
+
+          <div className="app-header__mobile-row">
             <button
               className="app-header__signout-btn"
               onClick={() => supabase.auth.signOut()}
@@ -326,7 +307,7 @@ export default function App() {
           {/* Absolutely positioned (see .app-header--mobile .color-legend)
               into the top-right corner rather than given its own row —
               there's no row it naturally belongs to, and pinning it out of
-              flow keeps the four action buttons' row widths (and so their
+              flow keeps the action buttons' row widths (and so their
               matched sizing) unaffected by it. */}
           <ColorLegend piOnline={piOnline} />
         </header>
@@ -342,7 +323,12 @@ export default function App() {
 
             {monthNav}
 
-            <EventBanner lines={eventBannerLines} />
+            <button
+              className="app-header__race-calendar-btn"
+              onClick={() => setShowRaceCalendar(true)}
+            >
+              Race Calendar
+            </button>
           </div>
 
           <span className="app-header__divider" aria-hidden="true" />
@@ -414,7 +400,6 @@ export default function App() {
           onMonthChange={handleMonthChange}
           onDayClick={handleDayClick}
           onCardClick={handleCardClick}
-          onWorkoutsChanged={refreshNextEvents}
         />
       ) : (
         <Calendar
@@ -424,7 +409,6 @@ export default function App() {
           onMonthChange={handleMonthChange}
           onDayClick={handleDayClick}
           onCardClick={handleCardClick}
-          onWorkoutsChanged={refreshNextEvents}
         />
       )}
 
@@ -439,6 +423,13 @@ export default function App() {
       )}
 
       {showGraphs && <GraphsModal onClose={() => setShowGraphs(false)} />}
+
+      {showRaceCalendar && (
+        <RaceCalendarModal
+          onClose={() => setShowRaceCalendar(false)}
+          onWorkoutsChanged={() => reloadRef.current?.()}
+        />
+      )}
     </div>
   )
 }
