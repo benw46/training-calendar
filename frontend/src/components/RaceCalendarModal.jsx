@@ -94,7 +94,10 @@ function MonthCard({ year, month, eventsByDate, monthEvents, todayYMD, today, on
               <span className="race-month__event-name">
                 {ev.name}
                 {isPast && ev.event_time && (
-                  <span className="race-month__event-time">: {ev.event_time}</span>
+                  <span className="race-month__event-time">
+                    <span className="race-month__event-time-sep">: </span>
+                    {ev.event_time}
+                  </span>
                 )}
               </span>
               <span className="race-month__event-countdown">{countdownLabel(ev.date, today)}</span>

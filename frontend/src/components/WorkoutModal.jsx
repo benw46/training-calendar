@@ -443,11 +443,13 @@ export default function WorkoutModal({ workout, initialDate, initialSport, onClo
   }
 
   // The mask only restricts keystrokes to digits/colons, not length — a
-  // partially-typed "1:23" is still valid mask output, so completeness is
-  // checked separately here (matches the backend's TIME_PATTERN).
+  // partially-typed "1:23:4" is still valid mask output, so completeness is
+  // checked separately here (matches the backend's EVENT_TIME_PATTERN).
+  // Unlike race bests' result field, events accept either mm:ss (short
+  // races) or hh:mm:ss (longer ones) — the seconds group is optional.
   function validateEventTime(str) {
     if (str === '') return null
-    if (!/^\d{1,2}:\d{2}:\d{2}$/.test(str)) return 'Use hh:mm:ss'
+    if (!/^\d{1,2}:\d{2}(:\d{2})?$/.test(str)) return 'Use mm:ss or hh:mm:ss'
     return null
   }
 
@@ -717,7 +719,7 @@ export default function WorkoutModal({ workout, initialDate, initialSport, onClo
                 type="text"
                 inputMode="numeric"
                 className={`form-input${errors.event_time ? ' form-input--error' : ''}`}
-                placeholder="hh:mm:ss"
+                placeholder="mm:ss or hh:mm:ss"
                 value={form.event_time}
                 onChange={e => set('event_time', maskTime(e.target.value))}
               />

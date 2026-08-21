@@ -58,6 +58,10 @@ class DistanceSplit(BaseModel):
 
 TIME_PATTERN = re.compile(r"^\d{1,2}:\d{2}:\d{2}$")
 
+# Events accept either mm:ss (short races) or hh:mm:ss (longer ones) — unlike
+# TIME_PATTERN above, the seconds group is optional.
+EVENT_TIME_PATTERN = re.compile(r"^\d{1,2}:\d{2}(:\d{2})?$")
+
 
 class WorkoutBase(BaseModel):
     date: str  # YYYY-MM-DD
@@ -72,7 +76,7 @@ class WorkoutBase(BaseModel):
     run_splits: Optional[list[DistanceSplit]] = None
     bike_splits: Optional[list[DistanceSplit]] = None
     description: Optional[str] = None
-    event_time: Optional[str] = None  # hh:mm:ss
+    event_time: Optional[str] = None  # mm:ss or hh:mm:ss
     is_brick: bool = False
     gym_exercises: Optional[list[GymExercise]] = None
     run_exercises: Optional[list[IntervalExercise]] = None
@@ -82,8 +86,8 @@ class WorkoutBase(BaseModel):
     @field_validator("event_time")
     @classmethod
     def validate_event_time(cls, v):
-        if v is not None and not TIME_PATTERN.match(v):
-            raise ValueError("event_time must be in hh:mm:ss format")
+        if v is not None and not EVENT_TIME_PATTERN.match(v):
+            raise ValueError("event_time must be in mm:ss or hh:mm:ss format")
         return v
 
 
@@ -100,7 +104,7 @@ class WorkoutUpdate(BaseModel):
     actual_duration_minutes: Optional[int] = None
     actual_distance_km: Optional[float] = None
     description: Optional[str] = None
-    event_time: Optional[str] = None  # hh:mm:ss
+    event_time: Optional[str] = None  # mm:ss or hh:mm:ss
     sort_order: Optional[int] = None
     is_brick: Optional[bool] = None
     gym_exercises: Optional[list[GymExercise]] = None
@@ -111,8 +115,8 @@ class WorkoutUpdate(BaseModel):
     @field_validator("event_time")
     @classmethod
     def validate_event_time(cls, v):
-        if v is not None and not TIME_PATTERN.match(v):
-            raise ValueError("event_time must be in hh:mm:ss format")
+        if v is not None and not EVENT_TIME_PATTERN.match(v):
+            raise ValueError("event_time must be in mm:ss or hh:mm:ss format")
         return v
 
 
