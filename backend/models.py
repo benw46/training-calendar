@@ -63,6 +63,17 @@ TIME_PATTERN = re.compile(r"^\d{1,2}:\d{2}:\d{2}$")
 EVENT_TIME_PATTERN = re.compile(r"^\d{1,2}:\d{2}(:\d{2})?$")
 
 
+# Shared by WorkoutBase and WorkoutUpdate below — kept as a plain function
+# rather than duplicating the @field_validator body on both, since Create
+# needs it on WorkoutBase's fields but Update is deliberately a separate
+# BaseModel (every field optional, for exclude_unset PATCH semantics) rather
+# than an inheritor.
+def _validate_event_time(v):
+    if v is not None and not EVENT_TIME_PATTERN.match(v):
+        raise ValueError("event_time must be in mm:ss or hh:mm:ss format")
+    return v
+
+
 class WorkoutBase(BaseModel):
     date: str  # YYYY-MM-DD
     sport: Sport
@@ -86,9 +97,7 @@ class WorkoutBase(BaseModel):
     @field_validator("event_time")
     @classmethod
     def validate_event_time(cls, v):
-        if v is not None and not EVENT_TIME_PATTERN.match(v):
-            raise ValueError("event_time must be in mm:ss or hh:mm:ss format")
-        return v
+        return _validate_event_time(v)
 
 
 class WorkoutCreate(WorkoutBase):
@@ -115,9 +124,7 @@ class WorkoutUpdate(BaseModel):
     @field_validator("event_time")
     @classmethod
     def validate_event_time(cls, v):
-        if v is not None and not EVENT_TIME_PATTERN.match(v):
-            raise ValueError("event_time must be in mm:ss or hh:mm:ss format")
-        return v
+        return _validate_event_time(v)
 
 
 class WorkoutOut(WorkoutBase):

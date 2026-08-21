@@ -83,7 +83,9 @@ function MonthCard({ year, month, eventsByDate, monthEvents, todayYMD, today, on
           <span className="race-month__events-empty">No events</span>
         )}
         {monthEvents.map(ev => {
-          const isPast = ev.date < todayYMD
+          // <= rather than < — a time entered for today's event (e.g. right
+          // after finishing) should show immediately, not wait until tomorrow.
+          const isPast = ev.date <= todayYMD
           return (
             <button
               key={ev.id}

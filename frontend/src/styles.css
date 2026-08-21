@@ -1765,7 +1765,10 @@ body {
   background: none;
   border: none;
   border-radius: 4px;
-  padding: 3px 6px;
+  /* Right padding reserves room for the .race-month__event-goto pill (right:
+     6px, ~48px wide) so its hover reveal doesn't sit on top of the name or
+     countdown text. */
+  padding: 3px 54px 3px 6px;
   cursor: pointer;
   transition: background 0.1s;
 }
@@ -1924,12 +1927,8 @@ body {
 
   /* An always-visible event-goto pill vertically centered (the desktop
      position) would sit on top of the name/time/countdown text now that it
-     wraps onto multiple lines — pin it to the top-right corner instead and
-     reserve room for it so the text wraps around it, not under it. */
-  .race-month__event {
-    padding-right: 54px;
-  }
-
+     wraps onto multiple lines — pin it to the top-right corner instead
+     (padding-right is already reserved by the base .race-month__event rule). */
   .race-month__event-goto {
     top: 3px;
     transform: none;
