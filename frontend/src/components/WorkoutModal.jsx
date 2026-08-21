@@ -597,7 +597,7 @@ export default function WorkoutModal({ workout, initialDate, initialSport, onClo
       sport:                    values.sport,
       name:                     values.name.trim(),
       description:              values.description.trim() || null,
-      event_time:               values.event_time.trim() || null,
+      event_time:               null,
       planned_duration_minutes: isNoteLike ? null : parseDuration(values.planned_duration),
       planned_distance_km:      isNoteLike || isStrength ? null : (values.planned_distance !== '' ? parseFloat(values.planned_distance) : null),
       actual_duration_minutes:  null,
