@@ -1894,6 +1894,40 @@ body {
     grid-template-columns: 1fr;
     gap: 16px;
   }
+
+  /* No hover on touch, so the name/time no longer fit (or need to fit) on
+     one truncated line — let the time wrap onto its own row under the
+     title instead of being squeezed in after it. */
+  .race-month__event-name {
+    white-space: normal;
+    overflow: visible;
+    text-overflow: unset;
+  }
+
+  .race-month__event-time {
+    display: block;
+  }
+
+  /* The Go to... controls are hover-revealed on desktop, but touch has no
+     hover to reveal them with — show them permanently instead. */
+  .race-month__event-goto,
+  .race-month__calendar-goto-btn {
+    opacity: 1;
+    pointer-events: auto;
+  }
+
+  /* An always-visible event-goto pill vertically centered (the desktop
+     position) would sit on top of the name/time/countdown text now that it
+     wraps onto multiple lines — pin it to the top-right corner instead and
+     reserve room for it so the text wraps around it, not under it. */
+  .race-month__event {
+    padding-right: 54px;
+  }
+
+  .race-month__event-goto {
+    top: 3px;
+    transform: none;
+  }
 }
 
 .modal-form {
