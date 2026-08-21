@@ -153,7 +153,37 @@ journalctl -u garmin-daemon.service -n 20 --no-pager
 
 You should see `Sync triggered (startup)` → `Listening on channel 'garmin_sync'`.
 
-### 8. Automatic security updates
+### 8. Keep the Render backend warm
+
+Render's free tier spins the backend down after ~15 minutes idle, costing the
+next request a 30-60s cold start. This used to be pinged by a GitHub Actions
+cron job, but GitHub only guarantees scheduled workflows as best-effort —
+under platform load a `*/10` schedule can silently slip to 30-80 minutes
+between runs, well past the 15-minute window, so the backend went cold anyway.
+The Pi is online 24/7 already, so its own OS cron (not subject to GitHub's
+scheduling delays) does the ping instead:
+
+```
+crontab -e
+```
+
+Add:
+
+```
+*/10 * * * * curl --fail --silent --show-error --max-time 30 https://training-calendar.onrender.com/health -o /dev/null || echo "$(date -Is) keep-warm ping failed" >> /home/benw/training-sync/keep-warm.log
+```
+
+Verify it's installed and firing:
+
+```
+crontab -l
+tail -5 ~/training-sync/keep-warm.log   # only present once a ping has failed
+```
+
+No log line after a few cycles means every ping succeeded — that's expected
+day-to-day; the log only accumulates failures.
+
+### 9. Automatic security updates
 
 The Pi is internet-connected 24/7, so keep it patched hands-off:
 
@@ -215,6 +245,8 @@ backend, Vercel redeploys the frontend (both auto-deploy from `main`).
 | Run one sync by hand | `cd ~/training-sync && venv/bin/python sync_garmin.py` |
 | Clean shutdown | `sudo shutdown -h now` (wait for green LED to stop, then unplug) |
 | Reboot | `sudo reboot` |
+| Check keep-warm cron | `crontab -l` |
+| Keep-warm failure log | `tail -20 ~/training-sync/keep-warm.log` |
 
 **UI shows "Pi offline" but the Pi is on:** the daemon isn't writing heartbeats.
 Check it's running (`systemctl status garmin-daemon.service`); check logs for
