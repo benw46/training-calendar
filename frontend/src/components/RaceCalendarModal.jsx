@@ -33,13 +33,21 @@ function countdownLabel(dateStr, today) {
   return `${ago} day${ago === 1 ? '' : 's'} ago`
 }
 
-function MonthCard({ year, month, eventsByDate, monthEvents, todayYMD, today, onDayClick, onEventClick }) {
+function MonthCard({ year, month, eventsByDate, monthEvents, todayYMD, today, onDayClick, onEventClick, onGoToDate }) {
   const cells = useMemo(() => buildMonthCells(year, month), [year, month])
 
   return (
     <div className="race-month">
       <div className="race-month__calendar">
-        <h3 className="race-month__title">{MONTH_NAMES_SHORT[month]}</h3>
+        <div className="race-month__title-row">
+          <h3 className="race-month__title">{MONTH_NAMES_SHORT[month]}</h3>
+          <span
+            className="race-month__calendar-goto-btn"
+            onClick={() => onGoToDate(`${year}-${String(month + 1).padStart(2, '0')}-01`)}
+          >
+            Go to…
+          </span>
+        </div>
         <div className="race-month__weekdays">
           {WEEKDAY_LETTERS.map((l, i) => (
             <span key={i} className="race-month__weekday">{l}</span>
@@ -74,23 +82,37 @@ function MonthCard({ year, month, eventsByDate, monthEvents, todayYMD, today, on
         {monthEvents.length === 0 && (
           <span className="race-month__events-empty">No events</span>
         )}
-        {monthEvents.map(ev => (
-          <button
-            key={ev.id}
-            type="button"
-            className="race-month__event"
-            onClick={() => onEventClick(ev)}
-          >
-            <span className="race-month__event-name">{ev.name}</span>
-            <span className="race-month__event-countdown">{countdownLabel(ev.date, today)}</span>
-          </button>
-        ))}
+        {monthEvents.map(ev => {
+          const isPast = ev.date < todayYMD
+          return (
+            <button
+              key={ev.id}
+              type="button"
+              className="race-month__event"
+              onClick={() => onEventClick(ev)}
+            >
+              <span className="race-month__event-name">
+                {ev.name}
+                {isPast && ev.event_time && (
+                  <span className="race-month__event-time">: {ev.event_time}</span>
+                )}
+              </span>
+              <span className="race-month__event-countdown">{countdownLabel(ev.date, today)}</span>
+              <span
+                className="race-month__event-goto"
+                onClick={e => { e.stopPropagation(); onGoToDate(ev.date) }}
+              >
+                Go to…
+              </span>
+            </button>
+          )
+        })}
       </div>
     </div>
   )
 }
 
-export default function RaceCalendarModal({ onClose, onWorkoutsChanged }) {
+export default function RaceCalendarModal({ onClose, onWorkoutsChanged, onGoToDate }) {
   const [year, setYear] = useState(() => new Date().getFullYear())
   const [events, setEvents] = useState(null)
   const [error, setError] = useState(null)
@@ -158,6 +180,11 @@ export default function RaceCalendarModal({ onClose, onWorkoutsChanged }) {
 
   function handleEventClick(workout) {
     setDayModal({ type: 'edit', workout })
+  }
+
+  function handleGoToDate(dateStr) {
+    onGoToDate(dateStr)
+    close()
   }
 
   function handleModalSaved() {
@@ -228,6 +255,7 @@ export default function RaceCalendarModal({ onClose, onWorkoutsChanged }) {
                 today={today}
                 onDayClick={handleDayClick}
                 onEventClick={handleEventClick}
+                onGoToDate={handleGoToDate}
               />
             ))}
           </div>

@@ -211,6 +211,12 @@ export default function App() {
     }
   }
 
+  function handleGoToDate(dateStr) {
+    const d = new Date(dateStr + 'T00:00:00')
+    setVisibleMonth(new Date(d.getFullYear(), d.getMonth(), 1))
+    jumpToDateRef.current?.(d)
+  }
+
   function handleDayClick(date)     { setModal({ type: 'add', date }) }
   function handleCardClick(workout) { setModal({ type: 'edit', workout }) }
   function handleSaved()   { setModal(null); reloadRef.current?.() }
@@ -436,6 +442,7 @@ export default function App() {
         <RaceCalendarModal
           onClose={() => setShowRaceCalendar(false)}
           onWorkoutsChanged={() => reloadRef.current?.()}
+          onGoToDate={handleGoToDate}
         />
       )}
     </div>

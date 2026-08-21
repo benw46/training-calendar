@@ -56,6 +56,9 @@ class DistanceSplit(BaseModel):
     elevation_net_m: Optional[float] = None
 
 
+TIME_PATTERN = re.compile(r"^\d{1,2}:\d{2}:\d{2}$")
+
+
 class WorkoutBase(BaseModel):
     date: str  # YYYY-MM-DD
     sport: Sport
@@ -69,11 +72,19 @@ class WorkoutBase(BaseModel):
     run_splits: Optional[list[DistanceSplit]] = None
     bike_splits: Optional[list[DistanceSplit]] = None
     description: Optional[str] = None
+    event_time: Optional[str] = None  # hh:mm:ss
     is_brick: bool = False
     gym_exercises: Optional[list[GymExercise]] = None
     run_exercises: Optional[list[IntervalExercise]] = None
     bike_exercises: Optional[list[IntervalExercise]] = None
     swim_exercises: Optional[list[IntervalExercise]] = None
+
+    @field_validator("event_time")
+    @classmethod
+    def validate_event_time(cls, v):
+        if v is not None and not TIME_PATTERN.match(v):
+            raise ValueError("event_time must be in hh:mm:ss format")
+        return v
 
 
 class WorkoutCreate(WorkoutBase):
@@ -89,12 +100,20 @@ class WorkoutUpdate(BaseModel):
     actual_duration_minutes: Optional[int] = None
     actual_distance_km: Optional[float] = None
     description: Optional[str] = None
+    event_time: Optional[str] = None  # hh:mm:ss
     sort_order: Optional[int] = None
     is_brick: Optional[bool] = None
     gym_exercises: Optional[list[GymExercise]] = None
     run_exercises: Optional[list[IntervalExercise]] = None
     bike_exercises: Optional[list[IntervalExercise]] = None
     swim_exercises: Optional[list[IntervalExercise]] = None
+
+    @field_validator("event_time")
+    @classmethod
+    def validate_event_time(cls, v):
+        if v is not None and not TIME_PATTERN.match(v):
+            raise ValueError("event_time must be in hh:mm:ss format")
+        return v
 
 
 class WorkoutOut(WorkoutBase):
@@ -117,6 +136,7 @@ class WorkoutOut(WorkoutBase):
             run_splits=json.loads(row["run_splits"]) if row["run_splits"] else None,
             bike_splits=json.loads(row["bike_splits"]) if row["bike_splits"] else None,
             description=row["description"],
+            event_time=row["event_time"],
             sort_order=row["sort_order"],
             is_brick=bool(row["is_brick"]),
             gym_exercises=json.loads(row["gym_exercises"]) if row["gym_exercises"] else None,
@@ -132,9 +152,6 @@ class RaceType(str, Enum):
     ironman = "ironman"
 
 
-RACE_TIME_PATTERN = re.compile(r"^\d{1,2}:\d{2}:\d{2}$")
-
-
 class RaceBestUpdate(BaseModel):
     race_name: Optional[str] = None
     result: Optional[str] = None  # hh:mm:ss, or None to clear
@@ -143,7 +160,7 @@ class RaceBestUpdate(BaseModel):
     @field_validator("result")
     @classmethod
     def validate_result(cls, v):
-        if v is not None and not RACE_TIME_PATTERN.match(v):
+        if v is not None and not TIME_PATTERN.match(v):
             raise ValueError("result must be in hh:mm:ss format")
         return v
 

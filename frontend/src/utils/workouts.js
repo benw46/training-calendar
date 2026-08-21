@@ -47,6 +47,25 @@ export function getCardStatus(workout, today) {
   return 'done'
 }
 
+// Keeps a time field to digits punctuated as hh:mm:ss: anything that isn't
+// a digit is dropped and the colons are re-inserted from what's left, so the
+// only thing a keystroke can do is add or remove a digit.
+//
+// The digits fill from the right — seconds first, then minutes, then hours —
+// which is both how a time is typed (1,2,3,4,5 lands as 1:23:45) and what
+// makes this safe to re-run over a value that's already formatted. Filling
+// from the left would reformat a stored one-digit-hour time like "1:23:45"
+// into "12:34:5" the moment the field was edited; from the right it maps
+// back to itself, as does a two-digit-hour "12:34:56".
+export function maskTime(value) {
+  // Past six digits the field is full, so extra keystrokes are ignored
+  // rather than shifting the leading digits out.
+  const digits = value.replace(/\D/g, '').slice(0, 6)
+  if (digits.length <= 2) return digits
+  if (digits.length <= 4) return `${digits.slice(0, -2)}:${digits.slice(-2)}`
+  return `${digits.slice(0, -4)}:${digits.slice(-4, -2)}:${digits.slice(-2)}`
+}
+
 export function fmtDuration(minutes) {
   if (minutes == null) return null
   const h = Math.floor(minutes / 60)

@@ -74,6 +74,11 @@ SCHEMA_SQL = """
     -- from any database that still has it from before this cleanup.
     ALTER TABLE workouts DROP COLUMN IF EXISTS completed;
 
+    -- User-entered hh:mm:ss (e.g. a race finish time), stored as text like
+    -- race_bests.result rather than derived from actual_duration_minutes —
+    -- that column is whole minutes only, too coarse for a race clock time.
+    ALTER TABLE workouts ADD COLUMN IF NOT EXISTS event_time TEXT;
+
     CREATE TABLE IF NOT EXISTS sync_status (
         id INTEGER PRIMARY KEY CHECK (id = 1),
         last_synced_at TEXT,

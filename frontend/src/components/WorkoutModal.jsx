@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { api } from '../api/workouts'
 import { addWeeks, toYMD } from '../utils/dates'
-import { fmtRepsTime, repsTimeUnit, distanceExerciseUnit } from '../utils/workouts'
+import { fmtRepsTime, repsTimeUnit, distanceExerciseUnit, maskTime } from '../utils/workouts'
 
 const SPORTS = ['swim', 'bike', 'run', 'strength', 'other', 'note', 'event', 'period']
 // 'strength' is the sport's stable internal/DB value; "Gym" is only how it's
@@ -182,6 +182,7 @@ function initForm(workout, initialDate, initialSport) {
       sport:              workout.sport,
       name:               workout.name,
       description:        workout.description ?? '',
+      event_time:         workout.event_time ?? '',
       planned_duration:   fmtDurationInput(workout.planned_duration_minutes),
       planned_distance:   workout.planned_distance_km ?? '',
       actual_duration:    fmtDurationInput(workout.actual_duration_minutes),
@@ -200,6 +201,7 @@ function initForm(workout, initialDate, initialSport) {
     sport:            initialSport ?? 'run',
     name:             '',
     description:      '',
+    event_time:       '',
     planned_duration: '',
     planned_distance: '',
     actual_duration:  '',
@@ -440,10 +442,23 @@ export default function WorkoutModal({ workout, initialDate, initialSport, onClo
     return null
   }
 
+  // The mask only restricts keystrokes to digits/colons, not length — a
+  // partially-typed "1:23" is still valid mask output, so completeness is
+  // checked separately here (matches the backend's TIME_PATTERN).
+  function validateEventTime(str) {
+    if (str === '') return null
+    if (!/^\d{1,2}:\d{2}:\d{2}$/.test(str)) return 'Use hh:mm:ss'
+    return null
+  }
+
   function validate(values) {
     const errs = {}
     if (!values.date)  errs.date  = 'Required'
     if (!isPeriod && !values.name.trim()) errs.name = 'Required'
+    if (!isPeriod) {
+      const eventTimeErr = validateEventTime(values.event_time)
+      if (eventTimeErr) errs.event_time = eventTimeErr
+    }
     if (!isNoteLike && !isPeriod) {
       const plannedDurationErr = validateDuration(values.planned_duration)
       if (plannedDurationErr) errs.planned_duration = plannedDurationErr
@@ -537,6 +552,7 @@ export default function WorkoutModal({ workout, initialDate, initialSport, onClo
       sport:                   values.sport,
       name:                    values.name.trim(),
       description:             values.description.trim() || null,
+      event_time:              values.event_time.trim() || null,
       planned_duration_minutes: isNoteLike ? null : parseDuration(values.planned_duration),
       planned_distance_km:     isNoteLike || isStrength ? null : (values.planned_distance !== '' ? parseFloat(values.planned_distance) : null),
       actual_duration_minutes:  (isEdit && actualDurationMinutes === (workout.actual_duration_minutes ?? null)) ? undefined : actualDurationMinutes,
@@ -579,6 +595,7 @@ export default function WorkoutModal({ workout, initialDate, initialSport, onClo
       sport:                    values.sport,
       name:                     values.name.trim(),
       description:              values.description.trim() || null,
+      event_time:               values.event_time.trim() || null,
       planned_duration_minutes: isNoteLike ? null : parseDuration(values.planned_duration),
       planned_distance_km:      isNoteLike || isStrength ? null : (values.planned_distance !== '' ? parseFloat(values.planned_distance) : null),
       actual_duration_minutes:  null,
@@ -690,6 +707,21 @@ export default function WorkoutModal({ workout, initialDate, initialSport, onClo
                 onChange={e => set('description', e.target.value)}
                 rows={3}
               />
+            </div>
+          )}
+
+          {!isPeriod && (
+            <div className="form-row">
+              <label className="form-label">Time</label>
+              <input
+                type="text"
+                inputMode="numeric"
+                className={`form-input${errors.event_time ? ' form-input--error' : ''}`}
+                placeholder="hh:mm:ss"
+                value={form.event_time}
+                onChange={e => set('event_time', maskTime(e.target.value))}
+              />
+              {errors.event_time && <span className="form-error">{errors.event_time}</span>}
             </div>
           )}
 

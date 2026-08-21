@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { api } from '../api/workouts'
-import { listToByDate, SPORT_COLORS } from '../utils/workouts'
+import { listToByDate, SPORT_COLORS, maskTime } from '../utils/workouts'
 import { weekActualTotal, weekActualTotalsBySport } from '../utils/weeklyTotals'
 import { getMondayOf, addWeeks, addDays, toYMD } from '../utils/dates'
 
@@ -172,25 +172,6 @@ function formatFullDate(dateStr) {
 
 const RACE_TIME_PATTERN = /^\d{1,2}:\d{2}:\d{2}$/
 
-// Keeps the result field to digits punctuated as hh:mm:ss: anything that
-// isn't a digit is dropped and the colons are re-inserted from what's left,
-// so the only thing a keystroke can do is add or remove a digit.
-//
-// The digits fill from the right — seconds first, then minutes, then hours —
-// which is both how a time is typed (1,2,3,4,5 lands as 1:23:45) and what
-// makes this safe to re-run over a value that's already formatted. Filling
-// from the left would reformat a stored one-digit-hour time like "1:23:45"
-// into "12:34:5" the moment the field was edited; from the right it maps
-// back to itself, as does a two-digit-hour "12:34:56".
-function maskRaceTime(value) {
-  // Past six digits the field is full, so extra keystrokes are ignored
-  // rather than shifting the leading digits out.
-  const digits = value.replace(/\D/g, '').slice(0, 6)
-  if (digits.length <= 2) return digits
-  if (digits.length <= 4) return `${digits.slice(0, -2)}:${digits.slice(-2)}`
-  return `${digits.slice(0, -4)}:${digits.slice(-4, -2)}:${digits.slice(-2)}`
-}
-
 function RaceBestsTable({ records, onSave, draggedIndex, onDragStart, onDragOver, onDragEnd }) {
   const [drafts, setDrafts] = useState({}) // { [raceType]: { race_name?, result?, date? } }
   const dateInputRefs = useRef({})
@@ -302,11 +283,11 @@ function RaceBestsTable({ records, onSave, draggedIndex, onDragStart, onDragOver
                       aria-label="Result"
                       // Not type="number" — that would reject the colons
                       // outright. inputMode gets the numeric keypad on a
-                      // phone; maskRaceTime does the actual restricting.
+                      // phone; maskTime does the actual restricting.
                       inputMode="numeric"
                       maxLength={8}
                       value={fieldValue(key, 'result')}
-                      onChange={e => handleChange(key, 'result', maskRaceTime(e.target.value))}
+                      onChange={e => handleChange(key, 'result', maskTime(e.target.value))}
                       onBlur={() => handleBlurResult(key)}
                     />
                   </div>

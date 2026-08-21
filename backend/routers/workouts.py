@@ -49,9 +49,9 @@ def create_workout(body: WorkoutCreate):
         cur = conn.execute(
             """INSERT INTO workouts
                (date, sport, name, planned_duration_minutes, planned_distance_km,
-                actual_duration_minutes, actual_distance_km, description, is_brick,
+                actual_duration_minutes, actual_distance_km, description, event_time, is_brick,
                 gym_exercises, run_exercises, bike_exercises, swim_exercises)
-               VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+               VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                RETURNING id""",
             (
                 body.date,
@@ -62,6 +62,7 @@ def create_workout(body: WorkoutCreate):
                 body.actual_duration_minutes,
                 body.actual_distance_km,
                 body.description,
+                body.event_time,
                 body.is_brick,
                 gym_exercises,
                 run_exercises,
