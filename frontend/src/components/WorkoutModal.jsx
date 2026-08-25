@@ -457,7 +457,7 @@ export default function WorkoutModal({ workout, initialDate, initialSport, onClo
     const errs = {}
     if (!values.date)  errs.date  = 'Required'
     if (!isPeriod && !values.name.trim()) errs.name = 'Required'
-    if (!isPeriod) {
+    if (isEvent) {
       const eventTimeErr = validateEventTime(values.event_time)
       if (eventTimeErr) errs.event_time = eventTimeErr
     }
@@ -554,7 +554,7 @@ export default function WorkoutModal({ workout, initialDate, initialSport, onClo
       sport:                   values.sport,
       name:                    values.name.trim(),
       description:             values.description.trim() || null,
-      event_time:              values.event_time.trim() || null,
+      event_time:              isEvent ? (values.event_time.trim() || null) : null,
       planned_duration_minutes: isNoteLike ? null : parseDuration(values.planned_duration),
       planned_distance_km:     isNoteLike || isStrength ? null : (values.planned_distance !== '' ? parseFloat(values.planned_distance) : null),
       actual_duration_minutes:  (isEdit && actualDurationMinutes === (workout.actual_duration_minutes ?? null)) ? undefined : actualDurationMinutes,
@@ -712,7 +712,7 @@ export default function WorkoutModal({ workout, initialDate, initialSport, onClo
             </div>
           )}
 
-          {!isPeriod && (
+          {isEvent && (
             <div className="form-row">
               <label className="form-label">Time</label>
               <input
