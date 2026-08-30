@@ -218,6 +218,7 @@ body {
 }
 
 .app-header__sync-btn {
+  position: relative;
   font-size: 13px;
   font-weight: 600;
   color: rgba(255,255,255,0.9);
@@ -236,6 +237,24 @@ body {
 .app-header__sync-btn:disabled {
   opacity: 0.5;
   cursor: default;
+}
+
+/* Kept in normal flow (just invisible) so it's what actually sizes the
+   button; see the comment on the two spans in App.jsx. */
+.app-header__sync-btn-ghost {
+  visibility: hidden;
+  white-space: nowrap;
+}
+
+/* Overlaid on the ghost rather than sharing its flow, so its own (shorter,
+   for "Syncing…") width never shrinks the button around it. */
+.app-header__sync-btn-label {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  white-space: nowrap;
 }
 
 .app-header__graphs-btn {

@@ -313,7 +313,12 @@ export default function App() {
               onClick={handleGarminSync}
               disabled={syncing}
             >
-              {syncing ? 'Syncing…' : 'Sync from Garmin'}
+              {/* The invisible ghost reserves the button's width/height at
+                  "Sync from Garmin"'s size (the longer of the two labels);
+                  the real label sits absolutely positioned on top of it, so
+                  switching to "Syncing…" never shrinks the button. */}
+              <span className="app-header__sync-btn-ghost" aria-hidden="true">Sync from Garmin</span>
+              <span className="app-header__sync-btn-label">{syncing ? 'Syncing…' : 'Sync from Garmin'}</span>
             </button>
           </div>
 
@@ -395,7 +400,12 @@ export default function App() {
               onClick={handleGarminSync}
               disabled={syncing}
             >
-              {syncing ? 'Syncing…' : 'Sync from Garmin'}
+              {/* The invisible ghost reserves the button's width/height at
+                  "Sync from Garmin"'s size (the longer of the two labels);
+                  the real label sits absolutely positioned on top of it, so
+                  switching to "Syncing…" never shrinks the button. */}
+              <span className="app-header__sync-btn-ghost" aria-hidden="true">Sync from Garmin</span>
+              <span className="app-header__sync-btn-label">{syncing ? 'Syncing…' : 'Sync from Garmin'}</span>
             </button>
 
             <span className="app-header__last-synced">
