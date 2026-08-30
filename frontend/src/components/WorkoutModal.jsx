@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { api } from '../api/workouts'
 import { addWeeks, toYMD } from '../utils/dates'
-import { fmtRepsTime, repsTimeUnit, distanceExerciseUnit, maskTime } from '../utils/workouts'
+import { fmtRepsTime, repsTimeUnit, distanceExerciseUnit, maskTime, resetExercisesDone } from '../utils/workouts'
 
 const SPORTS = ['swim', 'bike', 'run', 'strength', 'other', 'note', 'event', 'period']
 // 'strength' is the sport's stable internal/DB value; "Gym" is only how it's
@@ -603,10 +603,12 @@ export default function WorkoutModal({ workout, initialDate, initialSport, onClo
       actual_duration_minutes:  null,
       actual_distance_km:       null,
       is_brick:                 isBrickable ? values.is_brick : false,
-      gym_exercises:            isStrength ? buildGymExercises(values.gym_exercises) : null,
-      run_exercises:            isRun  ? buildDistanceExercises(values.distance_exercises) : null,
-      bike_exercises:           isBike ? buildDistanceExercises(values.distance_exercises) : null,
-      swim_exercises:           isSwim ? buildDistanceExercises(values.distance_exercises) : null,
+      // resetExercisesDone: a copy is a new plan, not a record that the
+      // original's exercises were already done — see its own comment.
+      gym_exercises:            isStrength ? resetExercisesDone(buildGymExercises(values.gym_exercises)) : null,
+      run_exercises:            isRun  ? resetExercisesDone(buildDistanceExercises(values.distance_exercises)) : null,
+      bike_exercises:           isBike ? resetExercisesDone(buildDistanceExercises(values.distance_exercises)) : null,
+      swim_exercises:           isSwim ? resetExercisesDone(buildDistanceExercises(values.distance_exercises)) : null,
     }
 
     setCopying(true)

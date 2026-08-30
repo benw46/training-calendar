@@ -125,6 +125,13 @@ export function fmtDistanceExercise(ex) {
   return detail ? `${ex.name} — ${detail}` : ex.name
 }
 
+// Copying a workout (single-card Copy, or Copy Week) resets every exercise's
+// "Done" checkbox — a copy is a new plan to run through, not a record that
+// the original was completed, so its checkboxes shouldn't start pre-ticked.
+export function resetExercisesDone(exercises) {
+  return exercises ? exercises.map(ex => ({ ...ex, done: false })) : exercises
+}
+
 export function listToByDate(list) {
   const byDate = {}
   for (const w of list) {

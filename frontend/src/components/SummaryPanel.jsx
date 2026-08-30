@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { toYMD, addDays, getMondayOf } from '../utils/dates'
-import { SPORT_COLORS, fmtDuration, sortDayWorkouts } from '../utils/workouts'
+import { SPORT_COLORS, fmtDuration, sortDayWorkouts, resetExercisesDone } from '../utils/workouts'
 import {
   weekActualTotal, weekPlannedTotal,
   weekActualTotalsBySport, weekPlannedTotalsBySport,
@@ -111,10 +111,12 @@ export default function SummaryPanel({ workoutsByDate, days, today, onReordered 
           planned_distance_km: w.planned_distance_km,
           description: w.description,
           is_brick: w.is_brick,
-          gym_exercises: w.gym_exercises,
-          run_exercises: w.run_exercises,
-          bike_exercises: w.bike_exercises,
-          swim_exercises: w.swim_exercises,
+          // resetExercisesDone: a copy is a new plan, not a record that the
+          // original's exercises were already done — see its own comment.
+          gym_exercises: resetExercisesDone(w.gym_exercises),
+          run_exercises: resetExercisesDone(w.run_exercises),
+          bike_exercises: resetExercisesDone(w.bike_exercises),
+          swim_exercises: resetExercisesDone(w.swim_exercises),
         })
       } catch {
         failed += 1
