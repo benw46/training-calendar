@@ -187,3 +187,25 @@ class RaceBestsReorder(BaseModel):
     # The race types in the desired display order; each row's sort_order is set
     # to its index in this list.
     order: list[RaceType]
+
+
+class NoteCreate(BaseModel):
+    title: str = "Untitled"
+    content: str = ""
+
+
+class NoteUpdate(BaseModel):
+    title: Optional[str] = None
+    content: Optional[str] = None
+
+
+class NoteOut(BaseModel):
+    id: int
+    title: str
+    content: str
+
+
+class NotesReorder(BaseModel):
+    # Note ids in the desired tab order; each row's sort_order is set to its
+    # index in this list. Same pattern as RaceBestsReorder above.
+    order: list[int]

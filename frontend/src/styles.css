@@ -254,6 +254,22 @@ body {
   background: rgba(255,255,255,0.2);
 }
 
+.app-header__notes-btn {
+  font-size: 13px;
+  font-weight: 600;
+  color: rgba(255,255,255,0.9);
+  background: rgba(255,255,255,0.12);
+  border: 1px solid rgba(255,255,255,0.25);
+  border-radius: 4px;
+  padding: 4px 12px;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.app-header__notes-btn:hover {
+  background: rgba(255,255,255,0.2);
+}
+
 .app-header__race-calendar-btn {
   font-size: 13px;
   font-weight: 600;
@@ -334,6 +350,7 @@ body {
    Sign out gets a row to itself and so spans the full width. */
 .app-header--mobile .app-header__today-btn,
 .app-header--mobile .app-header__graphs-btn,
+.app-header--mobile .app-header__notes-btn,
 .app-header--mobile .app-header__race-calendar-btn,
 .app-header--mobile .app-header__sync-btn,
 .app-header--mobile .app-header__signout-btn {
@@ -2584,4 +2601,139 @@ body {
 .login-submit {
   width: 100%;
   margin-top: 6px;
+}
+
+/* ── Notes modal ───────────────────────────────────────────── */
+
+/* Same fixed-height/flex-column approach as .race-calendar-modal — content
+   (the textarea) fills whatever's left below the header/tab bar instead of
+   the modal resizing per note, and .modal's own overflow-y: auto is
+   overridden to hidden since the textarea scrolls internally instead. */
+.notes-modal {
+  height: calc(100vh - 48px);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.notes-modal .modal-header {
+  flex: 0 0 auto;
+}
+
+.notes-tabbar {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 10px 16px 0;
+  border-bottom: 1px solid #eaecf0;
+  overflow-x: auto;
+}
+
+.notes-tab {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  max-width: 200px;
+  padding: 8px 10px;
+  border: 1px solid #eaecf0;
+  border-bottom: none;
+  border-radius: 6px 6px 0 0;
+  background: #f9fafb;
+  color: #6b7280;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+  user-select: none;
+}
+
+.notes-tab--active {
+  background: #fff;
+  color: #111827;
+  border-color: #d1d5db;
+  /* Sits flush against .notes-tabbar's own border-bottom, so the active tab
+     visually merges into the body panel below it. */
+  position: relative;
+  top: 1px;
+}
+
+.notes-tab--dragging {
+  opacity: 0.5;
+}
+
+.notes-tab__title {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.notes-tab__rename-input {
+  width: 110px;
+  font-size: 13px;
+  font-weight: 600;
+  font-family: inherit;
+  border: 1px solid #9ca3af;
+  border-radius: 3px;
+  padding: 1px 4px;
+}
+
+.notes-tab__close {
+  font-size: 11px;
+  color: #9ca3af;
+  line-height: 1;
+  padding: 2px;
+  border-radius: 3px;
+}
+
+.notes-tab__close:hover {
+  background: #e5e7eb;
+  color: #374151;
+}
+
+.notes-tab__add {
+  flex: 0 0 auto;
+  width: 28px;
+  height: 28px;
+  margin-bottom: 6px;
+  border: 1px dashed #d1d5db;
+  border-radius: 6px;
+  background: none;
+  color: #6b7280;
+  font-size: 15px;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.notes-tab__add:hover {
+  background: #f3f4f6;
+  color: #374151;
+}
+
+.notes-body {
+  flex: 1 1 auto;
+  min-height: 0;
+  padding: 16px 20px;
+}
+
+.notes-textarea {
+  width: 100%;
+  height: 100%;
+  resize: none;
+  border: none;
+  outline: none;
+  font-family: inherit;
+  font-size: 14px;
+  line-height: 1.6;
+  color: #111827;
+}
+
+.notes-empty {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  color: #6b7280;
+  font-size: 14px;
 }

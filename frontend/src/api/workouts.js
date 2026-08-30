@@ -78,4 +78,31 @@ export const api = {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ order }),
     }),
+
+  getNotes: () =>
+    request('/notes/'),
+
+  createNote: (data = {}) =>
+    request('/notes/', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data),
+    }),
+
+  updateNote: (id, data) =>
+    request(`/notes/${id}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data),
+    }),
+
+  deleteNote: (id) =>
+    request(`/notes/${id}`, { method: 'DELETE' }),
+
+  reorderNotes: (order) =>
+    request('/notes/reorder', {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ order }),
+    }),
 }

@@ -2,6 +2,7 @@ import { useRef, useState, useCallback, useEffect } from 'react'
 import Calendar from './components/Calendar'
 import ColorLegend from './components/ColorLegend'
 import GraphsModal from './components/GraphsModal'
+import NotesModal from './components/NotesModal'
 import Login from './components/Login'
 import MobileDayView from './components/MobileDayView'
 import RaceCalendarModal from './components/RaceCalendarModal'
@@ -157,6 +158,7 @@ export default function App() {
   const [lastSynced, setLastSynced] = useState(null)
   const [piOnline, setPiOnline] = useState(null)  // null = not yet checked
   const [showGraphs, setShowGraphs] = useState(false)
+  const [showNotes, setShowNotes] = useState(false)
   const [showRaceCalendar, setShowRaceCalendar] = useState(false)
 
   const monthLabel = `${MONTH_NAMES[visibleMonth.getMonth()]} ${visibleMonth.getFullYear()}`
@@ -291,6 +293,12 @@ export default function App() {
             >
               Graphs
             </button>
+            <button
+              className="app-header__notes-btn"
+              onClick={() => setShowNotes(true)}
+            >
+              Notes
+            </button>
           </div>
 
           <div className="app-header__mobile-row">
@@ -376,6 +384,13 @@ export default function App() {
             </button>
 
             <button
+              className="app-header__notes-btn"
+              onClick={() => setShowNotes(true)}
+            >
+              Notes
+            </button>
+
+            <button
               className="app-header__sync-btn"
               onClick={handleGarminSync}
               disabled={syncing}
@@ -437,6 +452,8 @@ export default function App() {
       )}
 
       {showGraphs && <GraphsModal onClose={() => setShowGraphs(false)} />}
+
+      {showNotes && <NotesModal onClose={() => setShowNotes(false)} />}
 
       {showRaceCalendar && (
         <RaceCalendarModal

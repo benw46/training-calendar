@@ -128,6 +128,15 @@ SCHEMA_SQL = """
             ELSE 99
         END
         WHERE sort_order IS NULL;
+
+    -- Freeform notes, shown as tabs in the Notes modal. sort_order drives
+    -- tab display order, same pattern as race_bests above.
+    CREATE TABLE IF NOT EXISTS notes (
+        id SERIAL PRIMARY KEY,
+        title TEXT NOT NULL DEFAULT 'Untitled',
+        content TEXT NOT NULL DEFAULT '',
+        sort_order INTEGER NOT NULL DEFAULT 0
+    );
 """
 
 SEED_RACE_TYPES_SQL = """
