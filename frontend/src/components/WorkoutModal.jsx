@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
-import { api } from '../api/workouts'
+import { useMode } from '../ModeContext'
 import { addWeeks, toYMD } from '../utils/dates'
 import { fmtRepsTime, repsTimeUnit, distanceExerciseUnit, maskTime, resetExercisesDone } from '../utils/workouts'
 
@@ -8,6 +8,7 @@ const SPORTS = ['swim', 'bike', 'run', 'strength', 'other', 'note', 'event', 'pe
 // labeled in the UI, so every other sport still falls back to a
 // capitalized version of its own value.
 const SPORT_LABELS = { strength: 'Gym' }
+const STUDY_SPORTS = ['study', 'review', 'create']
 const MAX_DURATION_MINUTES = 100 * 60
 const MAX_DISTANCE_KM = 500
 const EMPTY_EXERCISE = { name: '', sets: '', reps: '', weight: '', bodyweight: false, is_time: false, done: false }
@@ -244,6 +245,8 @@ function buildDistanceExercises(rows) {
 }
 
 export default function WorkoutModal({ workout, initialDate, initialSport, onClose, onSaved, onDeleted }) {
+  const { mode, resource } = useMode()
+  const isStudy = mode === 'study'
   const isEdit = Boolean(workout)
   const [form, setForm] = useState(() => initForm(workout, initialDate, initialSport))
   const [errors, setErrors] = useState({})
@@ -466,7 +469,7 @@ export default function WorkoutModal({ workout, initialDate, initialSport, onClo
       if (plannedDurationErr) errs.planned_duration = plannedDurationErr
       const actualDurationErr = validateDuration(values.actual_duration)
       if (actualDurationErr) errs.actual_duration = actualDurationErr
-      if (!isStrength) {
+      if (!isStrength && !isStudy) {
         const plannedDistanceErr = validateDistance(values.planned_distance)
         if (plannedDistanceErr) errs.planned_distance = plannedDistanceErr
         const actualDistanceErr = validateDistance(values.actual_distance)
@@ -503,7 +506,7 @@ export default function WorkoutModal({ workout, initialDate, initialSport, onClo
       setSaving(true)
       setSubmitError(null)
       try {
-        await Promise.all(notes.map(n => api.create({
+        await Promise.all(notes.map(n => resource.create({
           date:                     n.date,
           sport:                    'note',
           name:                     n.name,
@@ -549,7 +552,14 @@ export default function WorkoutModal({ workout, initialDate, initialSport, onClo
     // send them when the user actually changed the value from what the
     // form was seeded with; otherwise omit the key so the backend's
     // exclude_unset leaves whatever's currently in the DB untouched.
-    const payload = {
+    const payload = isStudy ? {
+      date:                     values.date,
+      sport:                    values.sport,
+      name:                     values.name.trim(),
+      description:              values.description.trim() || null,
+      planned_duration_minutes: parseDuration(values.planned_duration),
+      actual_duration_minutes:  (isEdit && actualDurationMinutes === (workout.actual_duration_minutes ?? null)) ? undefined : actualDurationMinutes,
+    } : {
       date:                    values.date,
       sport:                   values.sport,
       name:                    values.name.trim(),
@@ -569,8 +579,8 @@ export default function WorkoutModal({ workout, initialDate, initialSport, onClo
     setSaving(true)
     setSubmitError(null)
     try {
-      if (isEdit) await api.update(workout.id, payload)
-      else        await api.create(payload)
+      if (isEdit) await resource.update(workout.id, payload)
+      else        await resource.create(payload)
       onSaved()
     } catch (err) {
       setSubmitError(err.message)
@@ -592,7 +602,14 @@ export default function WorkoutModal({ workout, initialDate, initialSport, onClo
     const errs = validate(values)
     if (Object.keys(errs).length) { setErrors(errs); return }
 
-    const payload = {
+    const payload = isStudy ? {
+      date:                     values.date,
+      sport:                    values.sport,
+      name:                     values.name.trim(),
+      description:              values.description.trim() || null,
+      planned_duration_minutes: parseDuration(values.planned_duration),
+      actual_duration_minutes:  null,
+    } : {
       date:                     values.date,
       sport:                    values.sport,
       name:                     values.name.trim(),
@@ -614,7 +631,7 @@ export default function WorkoutModal({ workout, initialDate, initialSport, onClo
     setCopying(true)
     setSubmitError(null)
     try {
-      await api.create(payload)
+      await resource.create(payload)
       onSaved()
     } catch (err) {
       setSubmitError(err.message)
@@ -627,7 +644,7 @@ export default function WorkoutModal({ workout, initialDate, initialSport, onClo
     setDeleting(true)
     setSubmitError(null)
     try {
-      await api.delete(workout.id)
+      await resource.delete(workout.id)
       onDeleted()
     } catch (err) {
       setSubmitError(err.message)
@@ -640,13 +657,13 @@ export default function WorkoutModal({ workout, initialDate, initialSport, onClo
     if (e.target === e.currentTarget) close()
   }
 
-  const typeLabel = isEvent ? 'Event' : isNote ? 'Note' : isPeriod ? 'Period' : 'Workout'
+  const typeLabel = isStudy ? (form.sport.charAt(0).toUpperCase() + form.sport.slice(1)) : isEvent ? 'Event' : isNote ? 'Note' : isPeriod ? 'Period' : 'Workout'
   const modalTitle = `${isEdit ? 'View' : 'Add'} ${typeLabel}`
 
   // Period fans out into separate note workouts rather than persisting as
   // its own entity (see handleSave), so editing an existing workout can't
   // sensibly be turned into one — offer it only when adding fresh.
-  const sportOptions = SPORTS.filter(s => s !== 'period' || !isEdit)
+  const sportOptions = isStudy ? STUDY_SPORTS : SPORTS.filter(s => s !== 'period' || !isEdit)
 
   return (
     <div className="modal-backdrop" onClick={handleBackdrop}>
@@ -693,7 +710,7 @@ export default function WorkoutModal({ workout, initialDate, initialSport, onClo
               <input
                 type="text"
                 className={`form-input${errors.name ? ' form-input--error' : ''}`}
-                placeholder={isEvent ? 'e.g. Race Day' : isNote ? 'e.g. Rest day' : 'e.g. Easy Spin'}
+                placeholder={isStudy ? 'e.g. Read FIPS 203 sections 1–5' : isEvent ? 'e.g. Race Day' : isNote ? 'e.g. Rest day' : 'e.g. Easy Spin'}
                 value={form.name}
                 onChange={e => set('name', e.target.value)}
               />
@@ -1020,7 +1037,7 @@ export default function WorkoutModal({ workout, initialDate, initialSport, onClo
                   />
                   {errors.planned_duration && <span className="form-error">{errors.planned_duration}</span>}
                 </div>
-                {!isStrength && (
+                {!isStrength && !isStudy && (
                   <div className="form-field">
                     <label className="form-label">Distance (km)</label>
                     <input
@@ -1053,7 +1070,7 @@ export default function WorkoutModal({ workout, initialDate, initialSport, onClo
                   />
                   {errors.actual_duration && <span className="form-error">{errors.actual_duration}</span>}
                 </div>
-                {!isStrength && (
+                {!isStrength && !isStudy && (
                   <div className="form-field">
                     <label className="form-label">Distance (km)</label>
                     <input

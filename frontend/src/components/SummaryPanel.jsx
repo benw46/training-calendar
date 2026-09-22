@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import { useMode } from '../ModeContext'
 import { toYMD, addDays, getMondayOf } from '../utils/dates'
 import { SPORT_COLORS, fmtDuration, sortDayWorkouts, resetExercisesDone } from '../utils/workouts'
 import {
@@ -6,9 +7,8 @@ import {
   weekActualTotalsBySport, weekPlannedTotalsBySport,
   computeDelta,
 } from '../utils/weeklyTotals'
-import { api } from '../api/workouts'
 
-const ROWS = [
+const TRAINING_ROWS = [
   { key: 'total', label: 'Total', color: '#374151' },
   { key: 'swim',  label: 'Swim',  color: SPORT_COLORS.swim },
   { key: 'bike',  label: 'Bike',  color: SPORT_COLORS.bike },
@@ -17,12 +17,20 @@ const ROWS = [
   { key: 'other', label: 'Other', color: SPORT_COLORS.other },
 ]
 
-const SPORT_ROWS = ROWS.filter(r => r.key !== 'total')
+// Study mode's three activity types, same Total-plus-per-type shape as
+// training's rows above.
+const STUDY_ROWS = [
+  { key: 'total',  label: 'Total',  color: '#374151' },
+  { key: 'study',  label: 'Study',  color: SPORT_COLORS.study },
+  { key: 'review', label: 'Review', color: SPORT_COLORS.review },
+  { key: 'create', label: 'Create', color: SPORT_COLORS.create },
+]
 
-// Copy Week / Delete Week only touch physical training activities — Note,
-// Event, and Period cards are markers/annotations rather than something to
-// duplicate or bulk-delete a week's worth of.
-const PHYSICAL_SPORTS = new Set(['swim', 'bike', 'run', 'strength', 'other'])
+// Copy Week / Delete Week only touch physical activities — Note, Event, and
+// Period cards are markers/annotations rather than something to duplicate or
+// bulk-delete a week's worth of. Study sessions are "physical" in the same
+// sense: real logged time, safe to copy/bulk-delete.
+const PHYSICAL_SPORTS = new Set(['swim', 'bike', 'run', 'strength', 'other', 'study', 'review', 'create'])
 
 function deltaText(delta) {
   if (delta.kind === 'new')  return 'New'
@@ -62,6 +70,10 @@ function DeltaBadge({ delta, sportDeltas, explanation }) {
 }
 
 export default function SummaryPanel({ workoutsByDate, days, today, onReordered }) {
+  const { mode, resource } = useMode()
+  const isStudy = mode === 'study'
+  const ROWS = isStudy ? STUDY_ROWS : TRAINING_ROWS
+  const SPORT_ROWS = ROWS.filter(r => r.key !== 'total')
   const [copyState, setCopyState] = useState('idle') // 'idle' | 'copying' | 'done' | 'error'
   const [copyMsg, setCopyMsg]     = useState(null)
   const [deleteState, setDeleteState] = useState('idle') // 'idle' | 'deleting' | 'error'
@@ -102,9 +114,16 @@ export default function SummaryPanel({ workoutsByDate, days, today, onReordered 
       .filter(w => PHYSICAL_SPORTS.has(w.sport))
     let failed = 0
     for (const w of ordered) {
+      const newDate = toYMD(addDays(new Date(w.date + 'T00:00:00'), 7))
       try {
-        await api.create({
-          date: toYMD(addDays(new Date(w.date + 'T00:00:00'), 7)),
+        await resource.create(isStudy ? {
+          date: newDate,
+          sport: w.sport,
+          name: w.name,
+          planned_duration_minutes: w.planned_duration_minutes,
+          description: w.description,
+        } : {
+          date: newDate,
           sport: w.sport,
           name: w.name,
           planned_duration_minutes: w.planned_duration_minutes,
@@ -145,7 +164,7 @@ export default function SummaryPanel({ workoutsByDate, days, today, onReordered 
     setDeleteState('deleting')
     setDeleteMsg(null)
 
-    const results = await Promise.allSettled(physicalWorkouts.map(w => api.delete(w.id)))
+    const results = await Promise.allSettled(physicalWorkouts.map(w => resource.delete(w.id)))
     const failed = results.filter(r => r.status === 'rejected')
 
     if (failed.length < physicalWorkouts.length) onReordered?.()
@@ -159,8 +178,8 @@ export default function SummaryPanel({ workoutsByDate, days, today, onReordered 
     }
   }
 
-  const actualByKey  = { total: 0, swim: 0, bike: 0, run: 0, gym: 0, other: 0 }
-  const plannedByKey = { total: 0, swim: 0, bike: 0, run: 0, gym: 0, other: 0 }
+  const actualByKey  = { total: 0, swim: 0, bike: 0, run: 0, gym: 0, other: 0, study: 0, review: 0, create: 0 }
+  const plannedByKey = { total: 0, swim: 0, bike: 0, run: 0, gym: 0, other: 0, study: 0, review: 0, create: 0 }
   for (const w of workouts) {
     const actual  = w.actual_duration_minutes ?? 0
     const planned = w.planned_duration_minutes ?? 0
@@ -168,6 +187,7 @@ export default function SummaryPanel({ workoutsByDate, days, today, onReordered 
     plannedByKey.total += planned
 
     const bucket = w.sport === 'swim' || w.sport === 'bike' || w.sport === 'run'
+      || w.sport === 'study' || w.sport === 'review' || w.sport === 'create'
       ? w.sport
       : w.sport === 'strength' ? 'gym' : 'other'
     actualByKey[bucket]  += actual

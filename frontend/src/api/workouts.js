@@ -79,14 +79,14 @@ export const api = {
       body: JSON.stringify({ order }),
     }),
 
-  getNotes: () =>
-    request('/notes/'),
+  getNotes: (mode = 'training') =>
+    request(`/notes/?mode=${mode}`),
 
-  createNote: (data = {}) =>
+  createNote: (data = {}, mode = 'training') =>
     request('/notes/', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(data),
+      body: JSON.stringify({ ...data, mode }),
     }),
 
   updateNote: (id, data) =>
@@ -99,10 +99,39 @@ export const api = {
   deleteNote: (id) =>
     request(`/notes/${id}`, { method: 'DELETE' }),
 
-  reorderNotes: (order) =>
-    request('/notes/reorder', {
+  reorderNotes: (order, mode = 'training') =>
+    request(`/notes/reorder?mode=${mode}`, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ order }),
     }),
+
+  listStudy: (start, end) =>
+    request(`/study/?start=${start}&end=${end}`),
+
+  createStudy: (data) =>
+    request('/study/', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data),
+    }),
+
+  updateStudy: (id, data) =>
+    request(`/study/${id}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data),
+    }),
+
+  deleteStudy: (id) =>
+    request(`/study/${id}`, { method: 'DELETE' }),
+}
+
+// A single { list, create, update, delete } surface so calendar components
+// (Calendar, MobileDayView, DayColumn, WorkoutModal, SummaryPanel) don't need
+// to branch on mode themselves — see ModeContext.
+export function resourceFor(mode) {
+  return mode === 'study'
+    ? { list: api.listStudy, create: api.createStudy, update: api.updateStudy, delete: api.deleteStudy }
+    : { list: api.list, create: api.create, update: api.update, delete: api.delete }
 }

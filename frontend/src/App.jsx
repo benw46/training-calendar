@@ -8,8 +8,16 @@ import MobileDayView from './components/MobileDayView'
 import RaceCalendarModal from './components/RaceCalendarModal'
 import WorkoutModal from './components/WorkoutModal'
 import { api } from './api/workouts'
+import { ModeProvider } from './ModeContext'
 import { formatSyncedAt, MIN_YEAR, MAX_YEAR, MIN_DATE, MAX_DATE } from './utils/dates'
 import { supabase } from './supabaseClient'
+
+// The app's only piece of UI state that persists across a reload — nothing
+// else in App does (see the ModeContext / study-mode spec), so a query
+// param is used rather than introducing localStorage for just this one value.
+function readModeFromURL() {
+  return new URLSearchParams(window.location.search).get('mode') === 'study' ? 'study' : 'training'
+}
 
 const MONTH_NAMES = ['January','February','March','April','May','June','July','August','September','October','November','December']
 
@@ -144,6 +152,35 @@ export default function App() {
     return () => listener.subscription.unsubscribe()
   }, [])
 
+  const [mode, setMode] = useState(readModeFromURL)
+
+  // Keeps ?mode= in sync with the mode toggle so a reload lands back in the
+  // same mode — replaceState (not pushState) so Study/Train doesn't grow the
+  // browser history stack.
+  useEffect(() => {
+    const url = new URL(window.location.href)
+    if (mode === 'study') url.searchParams.set('mode', 'study')
+    else url.searchParams.delete('mode')
+    window.history.replaceState(null, '', url)
+  }, [mode])
+
+  // Swaps the browser tab's favicon to the Study State mark while in Study
+  // mode, and back to RaceCondition's own mark in Training mode. Replaces
+  // the <link> node itself (rather than just setting .href) — some browsers
+  // don't reliably repaint the tab icon from an href mutation alone on an
+  // existing link element.
+  useEffect(() => {
+    const oldLink = document.querySelector('link[rel="icon"][type="image/svg+xml"]')
+    if (!oldLink) return
+    const newLink = oldLink.cloneNode()
+    newLink.href = mode === 'study' ? '/favicon-study.svg' : '/favicon.svg'
+    oldLink.replaceWith(newLink)
+  }, [mode])
+
+  function handleToggleMode() {
+    setMode(m => (m === 'study' ? 'training' : 'study'))
+  }
+
   const reloadRef        = useRef(null)
   const scrollToTodayRef = useRef(null)
   const jumpToDateRef    = useRef(null)
@@ -277,7 +314,7 @@ export default function App() {
         // requested here (month nav, then Today+Graphs, then Race
         // Calendar+Sync, then Sign out) since that interleaves elements from
         // both groups.
-        <header className="app-header app-header--mobile">
+        <header className={`app-header app-header--mobile${mode === 'study' ? ' app-header--study' : ''}`}>
           {monthNav}
 
           <div className="app-header__mobile-row">
@@ -305,13 +342,16 @@ export default function App() {
             <button
               className="app-header__race-calendar-btn"
               onClick={() => setShowRaceCalendar(true)}
+              disabled={mode === 'study'}
+              title={mode === 'study' ? 'Not available in Study mode' : undefined}
             >
               Race Calendar
             </button>
             <button
               className="app-header__sync-btn"
               onClick={handleGarminSync}
-              disabled={syncing}
+              disabled={syncing || mode === 'study'}
+              title={mode === 'study' ? 'Not available in Study mode' : undefined}
             >
               {/* The invisible ghost reserves the button's width/height at
                   "Sync from Garmin"'s size (the longer of the two labels);
@@ -336,10 +376,10 @@ export default function App() {
               there's no row it naturally belongs to, and pinning it out of
               flow keeps the action buttons' row widths (and so their
               matched sizing) unaffected by it. */}
-          <ColorLegend piOnline={piOnline} />
+          <ColorLegend piOnline={piOnline} mode={mode} onToggleMode={handleToggleMode} />
         </header>
       ) : (
-        <header className="app-header">
+        <header className={`app-header${mode === 'study' ? ' app-header--study' : ''}`}>
           <div className="app-header__controls" ref={controlsRef}>
             <button
               className="app-header__today-btn"
@@ -353,6 +393,8 @@ export default function App() {
             <button
               className="app-header__race-calendar-btn"
               onClick={() => setShowRaceCalendar(true)}
+              disabled={mode === 'study'}
+              title={mode === 'study' ? 'Not available in Study mode' : undefined}
             >
               Race Calendar
             </button>
@@ -398,7 +440,8 @@ export default function App() {
             <button
               className="app-header__sync-btn"
               onClick={handleGarminSync}
-              disabled={syncing}
+              disabled={syncing || mode === 'study'}
+              title={mode === 'study' ? 'Not available in Study mode' : undefined}
             >
               {/* The invisible ghost reserves the button's width/height at
                   "Sync from Garmin"'s size (the longer of the two labels);
@@ -408,16 +451,18 @@ export default function App() {
               <span className="app-header__sync-btn-label">{syncing ? 'Syncing…' : 'Sync from Garmin'}</span>
             </button>
 
-            <span className="app-header__last-synced">
-              {lastSynced ? (
-                <>
-                  <span className="app-header__last-synced-label">Last synced: </span>
-                  {formatSyncedAt(lastSynced)}
-                </>
-              ) : 'Not yet synced'}
-            </span>
+            {mode === 'training' && (
+              <span className="app-header__last-synced">
+                {lastSynced ? (
+                  <>
+                    <span className="app-header__last-synced-label">Last synced: </span>
+                    {formatSyncedAt(lastSynced)}
+                  </>
+                ) : 'Not yet synced'}
+              </span>
+            )}
 
-            <ColorLegend piOnline={piOnline} />
+            <ColorLegend piOnline={piOnline} mode={mode} onToggleMode={handleToggleMode} />
 
             <button
               className="app-header__signout-btn"
@@ -429,43 +474,46 @@ export default function App() {
         </header>
       )}
 
-      {syncMsg && <div className="sync-toast">{syncMsg}</div>}
+      {mode === 'training' && syncMsg && <div className="sync-toast">{syncMsg}</div>}
 
-      {isMobile ? (
-        <MobileDayView
-          reloadRef={reloadRef}
-          scrollToTodayRef={scrollToTodayRef}
-          jumpToDateRef={jumpToDateRef}
-          onMonthChange={handleMonthChange}
-          onDayClick={handleDayClick}
-          onCardClick={handleCardClick}
-        />
-      ) : (
-        <Calendar
-          reloadRef={reloadRef}
-          scrollToTodayRef={scrollToTodayRef}
-          jumpToDateRef={jumpToDateRef}
-          onMonthChange={handleMonthChange}
-          onDayClick={handleDayClick}
-          onCardClick={handleCardClick}
-        />
-      )}
+      <ModeProvider mode={mode}>
+        {isMobile ? (
+          <MobileDayView
+            reloadRef={reloadRef}
+            scrollToTodayRef={scrollToTodayRef}
+            jumpToDateRef={jumpToDateRef}
+            onMonthChange={handleMonthChange}
+            onDayClick={handleDayClick}
+            onCardClick={handleCardClick}
+          />
+        ) : (
+          <Calendar
+            reloadRef={reloadRef}
+            scrollToTodayRef={scrollToTodayRef}
+            jumpToDateRef={jumpToDateRef}
+            onMonthChange={handleMonthChange}
+            onDayClick={handleDayClick}
+            onCardClick={handleCardClick}
+          />
+        )}
 
-      {modal && (
-        <WorkoutModal
-          workout={modal.type === 'edit' ? modal.workout : null}
-          initialDate={modal.type === 'add' ? modal.date : null}
-          onClose={() => setModal(null)}
-          onSaved={handleSaved}
-          onDeleted={handleDeleted}
-        />
-      )}
+        {modal && (
+          <WorkoutModal
+            workout={modal.type === 'edit' ? modal.workout : null}
+            initialDate={modal.type === 'add' ? modal.date : null}
+            initialSport={mode === 'study' ? 'study' : undefined}
+            onClose={() => setModal(null)}
+            onSaved={handleSaved}
+            onDeleted={handleDeleted}
+          />
+        )}
+      </ModeProvider>
 
-      {showGraphs && <GraphsModal onClose={() => setShowGraphs(false)} />}
+      {showGraphs && <GraphsModal mode={mode} onClose={() => setShowGraphs(false)} />}
 
-      {showNotes && <NotesModal onClose={() => setShowNotes(false)} />}
+      {showNotes && <NotesModal mode={mode} onClose={() => setShowNotes(false)} />}
 
-      {showRaceCalendar && (
+      {mode === 'training' && showRaceCalendar && (
         <RaceCalendarModal
           onClose={() => setShowRaceCalendar(false)}
           onWorkoutsChanged={() => reloadRef.current?.()}

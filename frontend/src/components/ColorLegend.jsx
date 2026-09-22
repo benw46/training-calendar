@@ -13,7 +13,7 @@ const ROWS = [
 const POPOVER_WIDTH = 350
 const VIEWPORT_MARGIN = 12 // px kept clear on each side so the popover never runs off-screen
 
-export default function ColorLegend({ piOnline = null }) {
+export default function ColorLegend({ piOnline = null, mode = 'training', onToggleMode }) {
   const [pos, setPos] = useState(null) // { top, left, width } in viewport (fixed-position) coordinates; null = closed
   const triggerRef = useRef(null)
   const closeTimer = useRef(null)
@@ -145,20 +145,32 @@ export default function ColorLegend({ piOnline = null }) {
           <div className="color-legend__divider" />
 
           <div className="color-legend__credit-row">
-            {/* The app's own mark, straight from the favicon file, so the two
-                can never drift apart. Decorative beside the credit line. */}
+            {/* The app's own mark, straight from the favicon file (swapped to
+                the Study State mark in Study mode, same file the browser tab
+                icon uses — see App.jsx), so the two can never drift apart.
+                Decorative beside the credit line. */}
             <img
               className="color-legend__credit-icon"
-              src="/favicon.svg"
+              src={mode === 'study' ? '/favicon-study.svg' : '/favicon.svg'}
               alt=""
               aria-hidden="true"
               width="28"
               height="28"
             />
             <p className="color-legend__credit">
-              RaceCondition has been written by Benjamin Watts with the assistance of Claude Code.
+              {mode === 'study' ? 'Study State' : 'RaceCondition'} has been written by Benjamin Watts with the assistance of Claude Code.
             </p>
           </div>
+
+          <div className="color-legend__divider" />
+
+          <button
+            type="button"
+            className="btn btn--secondary color-legend__mode-btn"
+            onClick={() => { setPos(null); onToggleMode?.() }}
+          >
+            {mode === 'study' ? 'Train' : 'Study'}
+          </button>
         </div>,
         document.body
       )}

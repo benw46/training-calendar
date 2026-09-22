@@ -7,7 +7,7 @@ import { api } from '../api/workouts'
 // keystroke.
 const SAVE_DEBOUNCE_MS = 800
 
-export default function NotesModal({ onClose }) {
+export default function NotesModal({ mode = 'training', onClose }) {
   const [notes, setNotes] = useState(null) // null while loading
   const [activeId, setActiveId] = useState(null)
   const [error, setError] = useState(null)
@@ -21,13 +21,13 @@ export default function NotesModal({ onClose }) {
   const pendingContentRef = useRef(null) // { id, content } not yet flushed to the API
 
   useEffect(() => {
-    api.getNotes()
+    api.getNotes(mode)
       .then(list => {
         setNotes(list)
         if (list.length > 0) setActiveId(list[0].id)
       })
       .catch(err => setError(err.message))
-  }, [])
+  }, [mode])
 
   useEffect(() => {
     function onKey(e) { if (e.key === 'Escape') close() }
@@ -48,7 +48,7 @@ export default function NotesModal({ onClose }) {
   useEffect(() => () => flushPendingSave(), [])
 
   function handleAddNote() {
-    api.createNote({ title: 'Untitled' })
+    api.createNote({ title: 'Untitled' }, mode)
       .then(note => {
         setNotes(list => [...list, note])
         setActiveId(note.id)
@@ -113,7 +113,7 @@ export default function NotesModal({ onClose }) {
   function handleDragEnd() {
     setDraggedId(null)
     if (notes) {
-      api.reorderNotes(notes.map(n => n.id)).catch(err => setError(err.message))
+      api.reorderNotes(notes.map(n => n.id), mode).catch(err => setError(err.message))
     }
   }
 

@@ -67,6 +67,13 @@ body {
   flex-shrink: 0;
 }
 
+/* Study mode's header — same slate-to-color-to-slate gradient shape as
+   training's, just swapped to purple so the two modes read as visually
+   distinct at a glance. */
+.app-header--study {
+  background: linear-gradient(90deg, #475569 0%, #7c3aed 50%, #475569 100%);
+}
+
 .app-header__controls,
 .app-header__end,
 .color-legend {
@@ -301,8 +308,13 @@ body {
   transition: background 0.15s;
 }
 
-.app-header__race-calendar-btn:hover {
+.app-header__race-calendar-btn:hover:not(:disabled) {
   background: rgba(255,255,255,0.2);
+}
+
+.app-header__race-calendar-btn:disabled {
+  opacity: 0.5;
+  cursor: default;
 }
 
 .app-header__signout-btn {
@@ -1328,6 +1340,31 @@ body {
   padding: 16px 20px 20px;
 }
 
+/* Study mode has no Personal Bests column, so its two charts just stack
+   full-width instead of sharing the training layout's two-column grid. */
+.graph-body--study {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 20px;
+}
+
+.graph-body--study .graph-panel--chart-3mo {
+  grid-column: 1;
+  grid-row: 1;
+}
+
+.graph-body--study .graph-panel--chart-year {
+  grid-column: 1;
+  grid-row: 2;
+}
+
+/* Deliberately NOT overriding .graph-panel--chart-3mo .weekly-chart's
+   max-width: 460px here — that chart's viewBox is a fixed 340x330 (see
+   GraphsModal.jsx), so letting it stretch to this column's full width would
+   scale the SVG (and its 1-2 hour bars) up to several times training's size
+   instead of matching it. Same cap, same on-screen scale, just centered in
+   a wider column via .weekly-chart's own margin: 0 auto. */
+
 .graph-body--triple {
   display: grid;
   grid-template-columns: 1fr 1fr;
@@ -2262,6 +2299,14 @@ body {
   font-size: 11px;
   color: #9ca3af;
   line-height: 1.4;
+}
+
+/* Full-width so it reads as the popover's one actionable item, distinct from
+   the read-only rows above it. */
+.color-legend__mode-btn {
+  display: block;
+  width: 100%;
+  text-align: center;
 }
 
 .modal-submit-error {

@@ -1,0 +1,31 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 64 64">
+  <!-- Study State mark: Study mode's counterpart to favicon.svg's RC mark —
+       same shape and gradient structure, recoloured to the Study mode
+       header's purple gradient (see styles.css) with the SS monogram. -->
+  <defs>
+    <linearGradient id="ss-bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#a855f7" />
+      <stop offset="55%" stop-color="#7c3aed" />
+      <stop offset="100%" stop-color="#4c1d95" />
+    </linearGradient>
+  </defs>
+
+  <rect width="64" height="64" rx="14" fill="url(#ss-bg)" />
+
+  <!-- Activity-type accent along the base: Study mode's own Study / Review /
+       Create hues (SPORT_COLORS in src/utils/workouts.js), same treatment as
+       the RC mark's swim/bike/run stripe. -->
+  <g opacity="0.9">
+    <rect x="12" y="50" width="13.3" height="3.2" rx="1.6" fill="#ec4899" />
+    <rect x="25.3" y="50" width="13.3" height="3.2" rx="1.6" fill="#06b6d4" />
+    <rect x="38.6" y="50" width="13.4" height="3.2" rx="1.6" fill="#a855f7" />
+  </g>
+
+  <text x="32" y="38"
+        text-anchor="middle"
+        font-family="system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif"
+        font-size="30"
+        font-weight="700"
+        letter-spacing="-1"
+        fill="#ffffff">SS</text>
+</svg>

@@ -1,5 +1,6 @@
 import SportIcon from './SportIcon'
 import { getCardStatus, fmtDuration, fmtDistance, fmtExercise, fmtDistanceExercise, STATUS_BAR_COLOR } from '../utils/workouts'
+import { renderMathNotation } from '../utils/richText'
 
 export default function WorkoutCard({
   workout, today, onClick,
@@ -60,12 +61,12 @@ export default function WorkoutCard({
         <div className="workout-card__top">
           <span className="workout-card__title-group" ref={titleRowRef}>
             <SportIcon sport={workout.sport} />
-            <span className="workout-card__name">{workout.name}</span>
+            <span className="workout-card__name">{renderMathNotation(workout.name)}</span>
           </span>
         </div>
 
         {workout.description && (
-          <p className="workout-card__description">{workout.description}</p>
+          <p className="workout-card__description">{renderMathNotation(workout.description)}</p>
         )}
 
         {isStrength && workout.gym_exercises?.length > 0 && (

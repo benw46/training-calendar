@@ -2,7 +2,7 @@ import { useState, useRef, useEffect } from 'react'
 import WorkoutCard from './WorkoutCard'
 import { isSameDay, formatDayHeader, toYMD } from '../utils/dates'
 import { sortDayWorkouts } from '../utils/workouts'
-import { api } from '../api/workouts'
+import { useMode } from '../ModeContext'
 
 const BRICK_RAIL_INSET = 8 // px in from the day-body's right edge, where every connector's vertical segment lines up
 const BRICK_DASH_UNIT = 6 // nominal dash+gap length in px, before being fitted to each path's exact length
@@ -15,6 +15,7 @@ const BRICK_TITLE_GAP = 3 // px of breathing room between a title's edge and whe
 const BRICK_NEXT_SPORT = { swim: 'bike', bike: 'run' }
 
 export default function DayColumn({ date, today, workouts = [], onDayClick, onCardClick, onReordered, hideHeader = false }) {
+  const { resource } = useMode()
   const isToday = isSameDay(date, today)
   const { primary, secondary } = formatDayHeader(date, today)
   const sorted = sortDayWorkouts(workouts)
@@ -198,7 +199,7 @@ export default function DayColumn({ date, today, workouts = [], onDayClick, onCa
     // move also carries the new date, but only for the moved card itself.
     try {
       await Promise.all(reordered.map((w, i) =>
-        api.update(w.id, w.id === dragged.id ? { date: ymd, sort_order: i } : { sort_order: i })
+        resource.update(w.id, w.id === dragged.id ? { date: ymd, sort_order: i } : { sort_order: i })
       ))
     } catch {
       // A failed reorder is trivially recoverable (drag again); resync with

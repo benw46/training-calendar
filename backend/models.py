@@ -189,9 +189,15 @@ class RaceBestsReorder(BaseModel):
     order: list[RaceType]
 
 
+class NoteMode(str, Enum):
+    training = "training"
+    study = "study"
+
+
 class NoteCreate(BaseModel):
     title: str = "Untitled"
     content: str = ""
+    mode: NoteMode = NoteMode.training
 
 
 class NoteUpdate(BaseModel):
@@ -203,9 +209,63 @@ class NoteOut(BaseModel):
     id: int
     title: str
     content: str
+    mode: NoteMode
 
 
 class NotesReorder(BaseModel):
     # Note ids in the desired tab order; each row's sort_order is set to its
     # index in this list. Same pattern as RaceBestsReorder above.
     order: list[int]
+
+
+# Study mode's own three activity types — kept off the Sport enum (a
+# dedicated resource rather than a new Sport member — see the comment on the
+# study_sessions table in database.py) but named `sport` on the model itself,
+# same field name as WorkoutBase, so the frontend's sport-keyed colour/icon/
+# totals-bucket code treats a study session exactly like a workout without
+# any study-specific branching.
+class StudySport(str, Enum):
+    study = "study"
+    review = "review"
+    create = "create"
+
+
+class StudyBase(BaseModel):
+    date: str  # YYYY-MM-DD
+    sport: StudySport
+    name: str
+    description: Optional[str] = None
+    planned_duration_minutes: Optional[int] = None
+    actual_duration_minutes: Optional[int] = None
+
+
+class StudyCreate(StudyBase):
+    pass
+
+
+class StudyUpdate(BaseModel):
+    date: Optional[str] = None
+    sport: Optional[StudySport] = None
+    name: Optional[str] = None
+    description: Optional[str] = None
+    planned_duration_minutes: Optional[int] = None
+    actual_duration_minutes: Optional[int] = None
+    sort_order: Optional[int] = None
+
+
+class StudyOut(StudyBase):
+    id: int
+    sort_order: Optional[int] = None
+
+    @classmethod
+    def from_row(cls, row) -> "StudyOut":
+        return cls(
+            id=row["id"],
+            date=row["date"],
+            sport=row["sport"],
+            name=row["name"],
+            description=row["description"],
+            planned_duration_minutes=row["planned_duration_minutes"],
+            actual_duration_minutes=row["actual_duration_minutes"],
+            sort_order=row["sort_order"],
+        )

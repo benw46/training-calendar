@@ -3,12 +3,13 @@ import DayColumn from './DayColumn'
 import SummaryPanel from './SummaryPanel'
 import { addDays, toYMD, isSameDay, getMondayOf, MIN_DATE, MAX_DATE } from '../utils/dates'
 import { listToByDate } from '../utils/workouts'
-import { api } from '../api/workouts'
+import { useMode } from '../ModeContext'
 
 export default function MobileDayView({
   reloadRef, scrollToTodayRef, jumpToDateRef, onMonthChange,
   onDayClick, onCardClick,
 }) {
+  const { resource } = useMode()
   const [today] = useState(() => {
     const t = new Date()
     t.setHours(0, 0, 0, 0)
@@ -38,7 +39,7 @@ export default function MobileDayView({
     const monday = getMondayOf(date)
     const start = toYMD(addDays(monday, -7))
     const end = toYMD(addDays(monday, 6))
-    api.list(start, end)
+    resource.list(start, end)
       .then(listToByDate)
       .then(byDate => {
         if (seq !== loadSeqRef.current) return
@@ -48,7 +49,7 @@ export default function MobileDayView({
         if (seq !== loadSeqRef.current) return
         setError(err.message)
       })
-  }, [])
+  }, [resource])
 
   useEffect(() => { load(selectedDate) }, [selectedDate, load])
 

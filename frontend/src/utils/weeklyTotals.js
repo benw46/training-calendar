@@ -9,15 +9,20 @@ function weekTotal(workoutsByDate, monday, field) {
   return total
 }
 
-// Anything not swim/bike/run/strength(gym) is bucketed into "other",
-// matching SummaryPanel's own sport grouping.
+// Anything not swim/bike/run/strength(gym)/study/review/create is bucketed
+// into "other", matching SummaryPanel's own sport grouping. The study/
+// review/create buckets only ever hold anything in Study mode (workouts
+// never carry those sports, and study sessions never carry any other), so
+// one shared function serves both modes without either needing to filter
+// the other's rows out first.
 function weekTotalsBySport(workoutsByDate, monday, field) {
-  const totals = { swim: 0, bike: 0, run: 0, gym: 0, other: 0 }
+  const totals = { swim: 0, bike: 0, run: 0, gym: 0, other: 0, study: 0, review: 0, create: 0 }
   for (let i = 0; i < 7; i++) {
     const list = workoutsByDate[toYMD(addDays(monday, i))]
     if (!list) continue
     for (const w of list) {
       const bucket = w.sport === 'swim' || w.sport === 'bike' || w.sport === 'run'
+        || w.sport === 'study' || w.sport === 'review' || w.sport === 'create'
         ? w.sport
         : w.sport === 'strength' ? 'gym' : 'other'
       totals[bucket] += w[field] ?? 0
