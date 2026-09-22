@@ -89,6 +89,11 @@ def update_workout(workout_id: int, body: WorkoutUpdate):
         raise HTTPException(status_code=400, detail="No fields to update")
 
     if "sport" in updates:
+        # sport is NOT NULL in the schema — reject an explicit null cleanly
+        # rather than crashing on None.value below or hitting a raw
+        # constraint-violation 500 from the UPDATE itself.
+        if updates["sport"] is None:
+            raise HTTPException(status_code=400, detail="sport cannot be null")
         updates["sport"] = updates["sport"].value
 
     if "gym_exercises" in updates:

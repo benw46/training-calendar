@@ -2,7 +2,7 @@ import { useState, useEffect, useLayoutEffect, useRef, useCallback } from 'react
 import WeekRow from './WeekRow'
 import { getMondayOf, addWeeks, addDays, toYMD, MIN_DATE, MAX_DATE } from '../utils/dates'
 import { listToByDate } from '../utils/workouts'
-import { api } from '../api/workouts'
+import { useMode } from '../ModeContext'
 
 const DAY_NAMES     = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
 const BATCH         = 4
@@ -23,6 +23,7 @@ export default function Calendar({
   onDayClick, onCardClick,
   reloadRef, scrollToTodayRef, jumpToDateRef, onMonthChange,
 }) {
+  const { resource } = useMode()
   const today = new Date()
   today.setHours(0, 0, 0, 0)
   const currentMonday    = getMondayOf(today)
@@ -52,13 +53,16 @@ export default function Calendar({
   const pendingScrollYMD   = useRef(null)        // target week after a date jump
 
   // ── Initial data load ────────────────────────────────────────
+  // Depends on `resource` (not just []) so a mode switch refetches the same
+  // rendered range from the other resource without touching `weeks` — that's
+  // what keeps the displayed period and scroll position unchanged.
   useEffect(() => {
     const ws = weeksRef.current
-    api.list(toYMD(addDays(ws[0], -LOOKBACK_DAYS)), toYMD(addDays(ws[ws.length - 1], 6)))
+    resource.list(toYMD(addDays(ws[0], -LOOKBACK_DAYS)), toYMD(addDays(ws[ws.length - 1], 6)))
       .then(listToByDate)
       .then(setWorkoutsByDate)
       .catch(err => setError(err.message))
-  }, [])
+  }, [resource])
 
   // ── Scroll to today on mount ─────────────────────────────────
   useEffect(() => {
@@ -111,7 +115,7 @@ export default function Calendar({
   const reload = useCallback(async () => {
     const ws = weeksRef.current
     try {
-      const byDate = await api
+      const byDate = await resource
         .list(toYMD(addDays(ws[0], -LOOKBACK_DAYS)), toYMD(addDays(ws[ws.length - 1], 6)))
         .then(listToByDate)
       setWorkoutsByDate(byDate)
@@ -119,7 +123,7 @@ export default function Calendar({
     } catch (err) {
       setError(err.message)
     }
-  }, [])
+  }, [resource])
 
   useEffect(() => { if (reloadRef) reloadRef.current = reload }, [reloadRef, reload])
 
@@ -151,7 +155,7 @@ export default function Calendar({
     )
 
     try {
-      const byDate = await api
+      const byDate = await resource
         .list(toYMD(addDays(newWeeks[0], -LOOKBACK_DAYS)), toYMD(addDays(newWeeks[newWeeks.length - 1], 6)))
         .then(listToByDate)
 
@@ -164,7 +168,7 @@ export default function Calendar({
     } catch (err) {
       setError(err.message)
     }
-  }, [])
+  }, [resource])
 
   useEffect(() => {
     if (jumpToDateRef) jumpToDateRef.current = jumpToDate
@@ -230,7 +234,7 @@ export default function Calendar({
         ? addDays(newWeeks[0], -LOOKBACK_DAYS)
         : newWeeks[0]
 
-      const byDate = await api
+      const byDate = await resource
         .list(toYMD(rangeStart), toYMD(addDays(newWeeks[newWeeks.length - 1], 6)))
         .then(listToByDate)
 
@@ -248,7 +252,7 @@ export default function Calendar({
     } finally {
       loadingRef.current = false
     }
-  }, [])
+  }, [resource])
 
   // ── IntersectionObserver ─────────────────────────────────────
   // The sentinel elements are always mounted at fixed positions (never

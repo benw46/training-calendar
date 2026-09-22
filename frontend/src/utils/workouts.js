@@ -8,6 +8,9 @@ export const SPORT_COLORS = {
   other:    '#6b7280',
   note:     '#d97706',
   event:    '#fbbf24',
+  study:    '#ec4899',
+  review:   '#06b6d4',
+  create:   '#a855f7',
 }
 
 export const STATUS_BAR_COLOR = {

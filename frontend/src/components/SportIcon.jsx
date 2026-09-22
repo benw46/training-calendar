@@ -116,7 +116,38 @@ function EventIcon() {
   )
 }
 
-const ICONS = { swim: SwimIcon, bike: BikeIcon, run: RunIcon, strength: StrengthIcon, other: OtherIcon, note: NoteIcon, event: EventIcon }
+function StudyIcon() {
+  return (
+    <svg width="20" height="20" viewBox="0 0 16 16" fill="none">
+      <path d="M8 3.2 C6.6 2 4.2 1.6 2 2 L2 12 C4.2 11.6 6.6 12 8 13.2" stroke="currentColor" strokeWidth="1.3" strokeLinejoin="round"/>
+      <path d="M8 3.2 C9.4 2 11.8 1.6 14 2 L14 12 C11.8 11.6 9.4 12 8 13.2" stroke="currentColor" strokeWidth="1.3" strokeLinejoin="round"/>
+      <line x1="8" y1="3.2" x2="8" y2="13.2" stroke="currentColor" strokeWidth="1.3"/>
+    </svg>
+  )
+}
+
+function ReviewIcon() {
+  return (
+    <svg width="20" height="20" viewBox="0 0 16 16" fill="none">
+      <circle cx="6.5" cy="6.5" r="4.3" stroke="currentColor" strokeWidth="1.4"/>
+      <line x1="9.6" y1="9.6" x2="14" y2="14" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round"/>
+    </svg>
+  )
+}
+
+function CreateIcon() {
+  return (
+    <svg width="20" height="20" viewBox="0 0 16 16" fill="none">
+      <path d="M10.6 1.9 L14.1 5.4 L5.2 14.3 L1.3 14.7 L1.7 10.8 Z" stroke="currentColor" strokeWidth="1.3" strokeLinejoin="round"/>
+      <line x1="9.3" y1="3.2" x2="12.8" y2="6.7" stroke="currentColor" strokeWidth="1.3"/>
+    </svg>
+  )
+}
+
+const ICONS = {
+  swim: SwimIcon, bike: BikeIcon, run: RunIcon, strength: StrengthIcon, other: OtherIcon,
+  note: NoteIcon, event: EventIcon, study: StudyIcon, review: ReviewIcon, create: CreateIcon,
+}
 
 export default function SportIcon({ sport }) {
   const Icon = ICONS[sport] ?? OtherIcon

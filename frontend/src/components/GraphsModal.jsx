@@ -1,5 +1,5 @@
-import { useState, useEffect, useCallback, useRef } from 'react'
-import { api } from '../api/workouts'
+import { useState, useEffect, useCallback, useMemo, useRef } from 'react'
+import { api, resourceFor } from '../api/workouts'
 import { listToByDate, SPORT_COLORS, maskTime } from '../utils/workouts'
 import { weekActualTotal, weekActualTotalsBySport } from '../utils/weeklyTotals'
 import { getMondayOf, addWeeks, addDays, toYMD } from '../utils/dates'
@@ -77,16 +77,22 @@ const PR_SPORTS = [
   { key: 'run',  label: 'Run'  },
 ]
 
-// Stack order (bottom to top) for the by-sport chart, and the shared source
-// of truth for its legend. Colors match SportIcon's stripes so a sport reads
+// Stack order (bottom to top) for the by-type chart, and the shared source
+// of truth for its legend. Colors match SportIcon's stripes so a type reads
 // the same way everywhere in the app; 'gym' groups 'strength' as
 // weekActualTotalsBySport does.
-const SPORT_STACK = [
+const TRAINING_SPORT_STACK = [
   { key: 'swim',  label: 'Swim',  color: SPORT_COLORS.swim },
   { key: 'bike',  label: 'Bike',  color: SPORT_COLORS.bike },
   { key: 'run',   label: 'Run',   color: SPORT_COLORS.run },
   { key: 'gym',   label: 'Gym',   color: SPORT_COLORS.strength },
   { key: 'other', label: 'Other', color: SPORT_COLORS.other },
+]
+
+const STUDY_SPORT_STACK = [
+  { key: 'study',  label: 'Study',  color: SPORT_COLORS.study },
+  { key: 'review', label: 'Review', color: SPORT_COLORS.review },
+  { key: 'create', label: 'Create', color: SPORT_COLORS.create },
 ]
 
 function buildWeeklyPoints(byDate, startMonday, weekCount) {
@@ -100,13 +106,13 @@ function buildWeeklyPoints(byDate, startMonday, weekCount) {
   })
 }
 
-function buildWeeklySportPoints(byDate, startMonday, weekCount) {
+function buildWeeklySportPoints(byDate, startMonday, weekCount, sportStack) {
   return Array.from({ length: weekCount }, (_, i) => {
     const monday = addWeeks(startMonday, i)
     const minutesBySport = weekActualTotalsBySport(byDate, monday)
     const bySport = {}
     let total = 0
-    for (const { key } of SPORT_STACK) {
+    for (const { key } of sportStack) {
       const hours = Math.round((minutesBySport[key] / 60) * 10) / 10
       bySport[key] = hours
       total += hours
@@ -515,7 +521,7 @@ function WeeklyDurationChart({ points, ariaLabel, width = 340, height = CHART_VI
   )
 }
 
-function WeeklyDurationBySportChart({ points, ariaLabel, width = 340, height = CHART_VIEWBOX_HEIGHT, svgRef }) {
+function WeeklyDurationBySportChart({ points, ariaLabel, width = 340, height = CHART_VIEWBOX_HEIGHT, svgRef, sportStack }) {
   const [hoverIndex, setHoverIndex] = useState(null)
 
   const padding = { top: 16, right: 12, bottom: 34, left: 38 }
@@ -545,7 +551,7 @@ function WeeklyDurationBySportChart({ points, ariaLabel, width = 340, height = C
   const yTicks = Array.from({ length: yTickCount + 1 }, (_, i) => Math.round((yMax / yTickCount) * i))
 
   const hovered = hoverIndex != null ? points[hoverIndex] : null
-  const hoveredSegments = hovered ? SPORT_STACK.filter(s => (hovered.bySport[s.key] ?? 0) > 0) : []
+  const hoveredSegments = hovered ? sportStack.filter(s => (hovered.bySport[s.key] ?? 0) > 0) : []
 
   // The tooltip lists every sport that had time this week (plus a total
   // row), so — unlike the single-value tooltip above — its height depends on
@@ -590,7 +596,7 @@ function WeeklyDurationBySportChart({ points, ariaLabel, width = 340, height = C
         let cum = 0
         return (
           <g key={i}>
-            {SPORT_STACK.map(({ key, color }) => {
+            {sportStack.map(({ key, color }) => {
               const val = p.bySport[key] ?? 0
               if (val <= 0) return null
               const yTop = yAt(cum + val)
@@ -669,7 +675,14 @@ function WeeklyDurationBySportChart({ points, ariaLabel, width = 340, height = C
   )
 }
 
-export default function GraphsModal({ onClose }) {
+export default function GraphsModal({ mode = 'training', onClose }) {
+  const isStudy = mode === 'study'
+  // Memoized rather than calling resourceFor(mode) directly — that returns a
+  // new object every render, and the fetch effect below depends on it; an
+  // unmemoized reference would make that dependency look "changed" on every
+  // render the effect's own setState calls trigger, looping fetches forever.
+  const resource = useMemo(() => resourceFor(mode), [mode])
+  const SPORT_STACK = isStudy ? STUDY_SPORT_STACK : TRAINING_SPORT_STACK
   const [weekly3moBySport, setWeekly3moBySport] = useState(null)
   const [weeklyYear, setWeeklyYear] = useState(null)
   const [bests, setBests]           = useState(null)
@@ -766,23 +779,29 @@ export default function GraphsModal({ onClose }) {
     const currentMonday = getMondayOf(today)
 
     const startMonday3mo = addWeeks(currentMonday, -(WEEKS_3MO - 1))
-    api.list(toYMD(startMonday3mo), toYMD(addDays(currentMonday, 6)))
+    resource.list(toYMD(startMonday3mo), toYMD(addDays(currentMonday, 6)))
       .then(list => {
-        setWeekly3moBySport(buildWeeklySportPoints(listToByDate(list), startMonday3mo, WEEKS_3MO))
-        setBests(computeDistancePRs(list))
+        setWeekly3moBySport(buildWeeklySportPoints(listToByDate(list), startMonday3mo, WEEKS_3MO, SPORT_STACK))
+        // Personal Bests — distance PRs and race results — only exist for
+        // training's physical sports, so Study mode skips both this and the
+        // race-bests fetch below rather than computing PRs that can never
+        // find a match.
+        if (!isStudy) setBests(computeDistancePRs(list))
       })
       .catch(err => setError3mo(err.message))
 
     const startMondayYear = addWeeks(currentMonday, -(WEEKS_YEAR - 1))
-    api.list(toYMD(startMondayYear), toYMD(addDays(currentMonday, 6)))
+    resource.list(toYMD(startMondayYear), toYMD(addDays(currentMonday, 6)))
       .then(listToByDate)
       .then(byDate => setWeeklyYear(buildWeeklyPoints(byDate, startMondayYear, WEEKS_YEAR)))
       .catch(err => setErrorYear(err.message))
 
-    api.getRaceBests()
-      .then(setRaceBests)
-      .catch(err => setErrorRaces(err.message))
-  }, [])
+    if (!isStudy) {
+      api.getRaceBests()
+        .then(setRaceBests)
+        .catch(err => setErrorRaces(err.message))
+    }
+  }, [isStudy, resource, SPORT_STACK])
 
   function handleSaveRaceBest(raceType, data) {
     api.updateRaceBest(raceType, data)
@@ -825,37 +844,39 @@ export default function GraphsModal({ onClose }) {
           <button className="modal-close" onClick={close} aria-label="Close">✕</button>
         </div>
 
-        <div className="graph-body graph-body--triple">
-          <div
-            className="graph-panel graph-panel--table-stack"
-            style={threeMoSize ? { height: threeMoSize.height } : undefined}
-          >
-            <div className="graph-panel--table-block">
-              <h3 className="graph-panel-title">Personal Bests — Races</h3>
-              {errorRaces && <div className="modal-submit-error">Couldn't load data — {errorRaces}</div>}
-              {!errorRaces && !raceBests && <div className="graph-loading">Loading…</div>}
-              {raceBests && (
-                <RaceBestsTable
-                  records={raceBests}
-                  onSave={handleSaveRaceBest}
-                  draggedIndex={draggedRaceIndex}
-                  onDragStart={setDraggedRaceIndex}
-                  onDragOver={handleRaceDragOver}
-                  onDragEnd={handleRaceDragEnd}
-                />
-              )}
-            </div>
+        <div className={`graph-body ${isStudy ? 'graph-body--study' : 'graph-body--triple'}`}>
+          {!isStudy && (
+            <div
+              className="graph-panel graph-panel--table-stack"
+              style={threeMoSize ? { height: threeMoSize.height } : undefined}
+            >
+              <div className="graph-panel--table-block">
+                <h3 className="graph-panel-title">Personal Bests — Races</h3>
+                {errorRaces && <div className="modal-submit-error">Couldn't load data — {errorRaces}</div>}
+                {!errorRaces && !raceBests && <div className="graph-loading">Loading…</div>}
+                {raceBests && (
+                  <RaceBestsTable
+                    records={raceBests}
+                    onSave={handleSaveRaceBest}
+                    draggedIndex={draggedRaceIndex}
+                    onDragStart={setDraggedRaceIndex}
+                    onDragOver={handleRaceDragOver}
+                    onDragEnd={handleRaceDragEnd}
+                  />
+                )}
+              </div>
 
-            <div className="graph-panel--table-block">
-              <h3 className="graph-panel-title">Personal Bests — Last Three Months</h3>
-              {error3mo && <div className="modal-submit-error">Couldn't load data — {error3mo}</div>}
-              {!error3mo && !bests && <div className="graph-loading">Loading…</div>}
-              {bests && <PersonalBestsTable records={bests} />}
+              <div className="graph-panel--table-block">
+                <h3 className="graph-panel-title">Personal Bests — Last Three Months</h3>
+                {error3mo && <div className="modal-submit-error">Couldn't load data — {error3mo}</div>}
+                {!error3mo && !bests && <div className="graph-loading">Loading…</div>}
+                {bests && <PersonalBestsTable records={bests} />}
+              </div>
             </div>
-          </div>
+          )}
 
           <div className="graph-panel graph-panel--chart graph-panel--chart-3mo">
-            <h3 className="graph-panel-title">Weekly Duration by Sport — Last Three Months</h3>
+            <h3 className="graph-panel-title">Weekly Duration by {isStudy ? 'Type' : 'Sport'} — Last Three Months</h3>
             <div className="sport-legend">
               {SPORT_STACK.map(s => (
                 <span className="sport-legend__item" key={s.key}>
@@ -869,8 +890,9 @@ export default function GraphsModal({ onClose }) {
             {weekly3moBySport && (
               <WeeklyDurationBySportChart
                 points={weekly3moBySport}
+                sportStack={SPORT_STACK}
                 svgRef={threeMoWrapRef}
-                ariaLabel="Total workout duration per week, broken down by sport, over the last three months"
+                ariaLabel={`Total ${isStudy ? 'study' : 'workout'} duration per week, broken down by ${isStudy ? 'type' : 'sport'}, over the last three months`}
               />
             )}
           </div>
@@ -900,7 +922,7 @@ export default function GraphsModal({ onClose }) {
                       pixelHeight={yearPixelHeight}
                       boundaryIndex={YEAR_BOUNDARY_INDEX}
                       showYAxisLabels={false}
-                      ariaLabel="Total workout duration per week, in hours, over the last year"
+                      ariaLabel={`Total ${isStudy ? 'study' : 'workout'} duration per week, in hours, over the last year`}
                     />
                   </div>
                 </div>
@@ -913,7 +935,7 @@ export default function GraphsModal({ onClose }) {
                 width={yearViewBoxWidth}
                 height={YEAR_VIEWBOX_HEIGHT}
                 boundaryIndex={YEAR_BOUNDARY_INDEX}
-                ariaLabel="Total workout duration per week, in hours, over the last year"
+                ariaLabel={`Total ${isStudy ? 'study' : 'workout'} duration per week, in hours, over the last year`}
               />
             ))}
           </div>

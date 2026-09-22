@@ -137,6 +137,46 @@ SCHEMA_SQL = """
         content TEXT NOT NULL DEFAULT '',
         sort_order INTEGER NOT NULL DEFAULT 0
     );
+
+    -- Separates Study-mode note tabs from Training-mode ones. Existing rows
+    -- default to 'training' so nothing already written moves between tabs.
+    ALTER TABLE notes ADD COLUMN IF NOT EXISTS mode TEXT NOT NULL DEFAULT 'training';
+
+    -- Study mode's session cards: same shape as workouts' duration fields,
+    -- but a dedicated table rather than a new `sport` value on workouts so
+    -- study rows never need filtering out of every training query (weekly
+    -- totals, the race calendar, Garmin matching, ...) — see routers/study.py.
+    CREATE TABLE IF NOT EXISTS study_sessions (
+        id SERIAL PRIMARY KEY,
+        date TEXT NOT NULL,
+        name TEXT NOT NULL,
+        description TEXT,
+        planned_duration_minutes INTEGER,
+        actual_duration_minutes INTEGER,
+        sort_order INTEGER
+    );
+
+    -- Study mode's own three activity types (Study/Review/Create), same
+    -- field name as workouts.sport so the frontend's sport-keyed code needs
+    -- no study-specific branching — see StudySport in models.py. Existing
+    -- rows default to 'study', the type that table already only ever held.
+    -- (Kept out of the CREATE TABLE above, same convention as workouts'
+    -- is_brick/gym_exercises/etc.: that block stays a snapshot of the
+    -- table's original shape, and every column added since is ALTER-only.)
+    ALTER TABLE study_sessions ADD COLUMN IF NOT EXISTS sport TEXT NOT NULL DEFAULT 'study';
+
+    -- Blanket deny-all to PostgREST for the public anon key (see
+    -- PROJECT-GUIDE.md security notes) — the backend and Pi are unaffected
+    -- since they connect as the table owner over a direct Postgres
+    -- connection, which bypasses RLS entirely. Idempotent, so safe on every
+    -- startup; enabling this here (rather than only via the Supabase
+    -- dashboard) means a newly created table is never left exposed.
+    ALTER TABLE workouts ENABLE ROW LEVEL SECURITY;
+    ALTER TABLE sync_status ENABLE ROW LEVEL SECURITY;
+    ALTER TABLE garmin_tokens ENABLE ROW LEVEL SECURITY;
+    ALTER TABLE race_bests ENABLE ROW LEVEL SECURITY;
+    ALTER TABLE notes ENABLE ROW LEVEL SECURITY;
+    ALTER TABLE study_sessions ENABLE ROW LEVEL SECURITY;
 """
 
 SEED_RACE_TYPES_SQL = """

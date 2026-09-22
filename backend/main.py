@@ -10,6 +10,7 @@ from routers.workouts import router as workouts_router
 from routers.garmin import router as garmin_router
 from routers.race_bests import router as race_bests_router
 from routers.notes import router as notes_router
+from routers.study import router as study_router
 
 app = FastAPI(title="Triathlon Calendar API")
 
@@ -37,6 +38,7 @@ app.include_router(workouts_router)
 app.include_router(garmin_router)
 app.include_router(race_bests_router)
 app.include_router(notes_router)
+app.include_router(study_router)
 
 
 @app.get("/health")
