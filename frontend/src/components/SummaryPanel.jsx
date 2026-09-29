@@ -122,6 +122,9 @@ export default function SummaryPanel({ workoutsByDate, days, today, onReordered 
           name: w.name,
           planned_duration_minutes: w.planned_duration_minutes,
           description: w.description,
+          // resetExercisesDone: a copy is a new plan, not a record that the
+          // original's exercises were already done — see its own comment.
+          study_exercises: resetExercisesDone(w.study_exercises),
         } : {
           date: newDate,
           sport: w.sport,

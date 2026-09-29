@@ -230,6 +230,15 @@ class StudySport(str, Enum):
     create = "create"
 
 
+# A study session's checklist row — deliberately just a name and a "Done"
+# checkbox, unlike GymExercise/IntervalExercise: study/review/create sessions
+# have no sets/reps/weight/time/bodyweight to track, only a free-text item
+# that gets ticked off.
+class StudyExercise(BaseModel):
+    name: str
+    done: bool = False
+
+
 class StudyBase(BaseModel):
     date: str  # YYYY-MM-DD
     sport: StudySport
@@ -237,6 +246,7 @@ class StudyBase(BaseModel):
     description: Optional[str] = None
     planned_duration_minutes: Optional[int] = None
     actual_duration_minutes: Optional[int] = None
+    study_exercises: Optional[list[StudyExercise]] = None
 
 
 class StudyCreate(StudyBase):
@@ -251,6 +261,7 @@ class StudyUpdate(BaseModel):
     planned_duration_minutes: Optional[int] = None
     actual_duration_minutes: Optional[int] = None
     sort_order: Optional[int] = None
+    study_exercises: Optional[list[StudyExercise]] = None
 
 
 class StudyOut(StudyBase):
@@ -268,4 +279,5 @@ class StudyOut(StudyBase):
             planned_duration_minutes=row["planned_duration_minutes"],
             actual_duration_minutes=row["actual_duration_minutes"],
             sort_order=row["sort_order"],
+            study_exercises=json.loads(row["study_exercises"]) if row["study_exercises"] else None,
         )

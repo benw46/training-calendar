@@ -89,6 +89,16 @@ export default function WorkoutCard({
           </ul>
         )}
 
+        {workout.study_exercises?.length > 0 && (
+          <ul className="workout-card__exercises">
+            {workout.study_exercises.map((ex, i) => (
+              <li key={i} className={ex.done ? 'workout-card__exercise--done' : undefined}>
+                {ex.name}
+              </li>
+            ))}
+          </ul>
+        )}
+
         {workout.sport !== 'note' && workout.sport !== 'event' && (
           <>
             {(actualDur || actualDist || plannedDur || plannedDist) && (

@@ -165,6 +165,13 @@ SCHEMA_SQL = """
     -- table's original shape, and every column added since is ALTER-only.)
     ALTER TABLE study_sessions ADD COLUMN IF NOT EXISTS sport TEXT NOT NULL DEFAULT 'study';
 
+    -- A study session's checklist: JSON array of {name, done} rows — see
+    -- StudyExercise in models.py. Deliberately simpler than workouts'
+    -- gym_exercises/*_exercises columns (no sets/reps/weight/time/
+    -- bodyweight), stored as text for the same reason: nothing ever queries
+    -- inside it.
+    ALTER TABLE study_sessions ADD COLUMN IF NOT EXISTS study_exercises TEXT;
+
     -- Blanket deny-all to PostgREST for the public anon key (see
     -- PROJECT-GUIDE.md security notes) — the backend and Pi are unaffected
     -- since they connect as the table owner over a direct Postgres
