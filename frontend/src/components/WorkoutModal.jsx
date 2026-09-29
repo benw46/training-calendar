@@ -13,6 +13,7 @@ const MAX_DURATION_MINUTES = 100 * 60
 const MAX_DISTANCE_KM = 500
 const EMPTY_EXERCISE = { name: '', sets: '', reps: '', weight: '', bodyweight: false, is_time: false, done: false }
 const EMPTY_DISTANCE_EXERCISE = { name: '', distance: '', reps: '', done: false }
+const EMPTY_STUDY_EXERCISE = { name: '', done: false }
 
 // With Time checked the Reps box holds m:ss / mm:ss instead of a count. It
 // still leaves here as a plain integer — total seconds — so `reps` is one
@@ -162,6 +163,16 @@ function initExercises(gymExercises) {
   }))
 }
 
+// Study mode's checklist rows: just a name and a "Done" checkbox, unlike the
+// gym/distance exercise shapes above — see StudyExercise in backend/models.py.
+function initStudyExercises(studyExercises) {
+  if (!studyExercises || !studyExercises.length) return []
+  return studyExercises.map(ex => ({
+    name: ex.name ?? '',
+    done: ex.done ?? false,
+  }))
+}
+
 // Shared by run/bike/swim — all three store their interval breakdown as the
 // same {name, distance, reps} shape, just in their own sport-specific
 // column (see IntervalExercise in backend/models.py), since a workout is
@@ -195,6 +206,7 @@ function initForm(workout, initialDate, initialSport) {
       // sport picks which), so whichever isn't null/undefined is the one to
       // seed the shared editable list with.
       distance_exercises: initDistanceExercises(workout.run_exercises ?? workout.bike_exercises ?? workout.swim_exercises),
+      study_exercises:    initStudyExercises(workout.study_exercises),
     }
   }
   return {
@@ -211,6 +223,7 @@ function initForm(workout, initialDate, initialSport) {
     is_brick:         false,
     gym_exercises:    [],
     distance_exercises: [],
+    study_exercises:  [],
   }
 }
 
@@ -242,6 +255,15 @@ function buildDistanceExercises(rows) {
       reps:     ex.reps !== '' ? parseInt(ex.reps, 10) : null,
       done:     ex.done,
     }))
+}
+
+// Mirrors buildGymExercises/buildDistanceExercises above: drops fully-empty
+// rows. No numeric coercion needed — a study exercise is just a name and a
+// checkbox.
+function buildStudyExercises(rows) {
+  return rows
+    .filter(ex => ex.name.trim())
+    .map(ex => ({ name: ex.name.trim(), done: ex.done }))
 }
 
 export default function WorkoutModal({ workout, initialDate, initialSport, onClose, onSaved, onDeleted }) {
@@ -425,6 +447,22 @@ export default function WorkoutModal({ workout, initialDate, initialSport, onClo
     setDraggedDistanceExerciseIndex(null)
   }
 
+  function addStudyExercise() {
+    setForm(f => ({ ...f, study_exercises: [...f.study_exercises, { ...EMPTY_STUDY_EXERCISE }] }))
+  }
+
+  function setStudyExercise(index, field, value) {
+    setForm(f => {
+      const rows = [...f.study_exercises]
+      rows[index] = { ...rows[index], [field]: value }
+      return { ...f, study_exercises: rows }
+    })
+  }
+
+  function removeStudyExercise(index) {
+    setForm(f => ({ ...f, study_exercises: f.study_exercises.filter((_, i) => i !== index) }))
+  }
+
   function validateDuration(str) {
     if (!str) return null
     const parsed = parseDuration(str)
@@ -559,6 +597,7 @@ export default function WorkoutModal({ workout, initialDate, initialSport, onClo
       description:              values.description.trim() || null,
       planned_duration_minutes: parseDuration(values.planned_duration),
       actual_duration_minutes:  (isEdit && actualDurationMinutes === (workout.actual_duration_minutes ?? null)) ? undefined : actualDurationMinutes,
+      study_exercises:          buildStudyExercises(values.study_exercises),
     } : {
       date:                    values.date,
       sport:                   values.sport,
@@ -609,6 +648,9 @@ export default function WorkoutModal({ workout, initialDate, initialSport, onClo
       description:              values.description.trim() || null,
       planned_duration_minutes: parseDuration(values.planned_duration),
       actual_duration_minutes:  null,
+      // resetExercisesDone: a copy is a new plan, not a record that the
+      // original's exercises were already done — see its own comment.
+      study_exercises:          resetExercisesDone(buildStudyExercises(values.study_exercises)),
     } : {
       date:                     values.date,
       sport:                    values.sport,
@@ -998,6 +1040,63 @@ export default function WorkoutModal({ workout, initialDate, initialSport, onClo
                   </table>
                 </div>
                 <button type="button" className="btn btn--secondary gym-exercises__add" onClick={addDistanceExercise}>
+                  + Add Exercise
+                </button>
+              </div>
+            </div>
+          )}
+
+          {isStudy && (
+            <div className="form-row">
+              <label className="form-label">Exercises</label>
+              <div className="gym-exercises">
+                <div className="gym-exercises__scroll">
+                  <table className="gym-exercises__table">
+                    <thead>
+                      <tr>
+                        <th className="gym-exercises__th--center">Done</th>
+                        <th>Activity</th>
+                        <th></th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {form.study_exercises.map((ex, i) => (
+                        <tr key={i}>
+                          <td className="gym-exercises__td--center">
+                            <input
+                              type="checkbox"
+                              className="gym-exercises__done-checkbox"
+                              checked={ex.done}
+                              onChange={e => setStudyExercise(i, 'done', e.target.checked)}
+                              aria-label="Mark done"
+                            />
+                          </td>
+                          <td className="gym-exercises__td--name">
+                            <textarea
+                              rows={1}
+                              className={`form-input gym-exercises__input gym-exercises__input--name${ex.done ? ' gym-exercises__input--done' : ''}`}
+                              placeholder="e.g. Chapter 3 notes"
+                              value={ex.name}
+                              ref={autoResizeTextarea}
+                              onChange={e => { setStudyExercise(i, 'name', e.target.value); autoResizeTextarea(e.target) }}
+                            />
+                          </td>
+                          <td>
+                            <button
+                              type="button"
+                              className="gym-exercises__remove"
+                              onClick={() => removeStudyExercise(i)}
+                              aria-label="Remove exercise"
+                            >
+                              ✕
+                            </button>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+                <button type="button" className="btn btn--secondary gym-exercises__add" onClick={addStudyExercise}>
                   + Add Exercise
                 </button>
               </div>

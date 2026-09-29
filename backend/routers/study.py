@@ -1,9 +1,15 @@
+import json
+
 from fastapi import APIRouter, Depends, HTTPException
 from auth import require_auth
 from database import get_conn
 from models import StudyCreate, StudyUpdate, StudyOut
 
 router = APIRouter(prefix="/study", tags=["study"], dependencies=[Depends(require_auth)])
+
+
+def serialize_exercises(exercises):
+    return json.dumps([e.model_dump() for e in exercises]) if exercises else None
 
 
 @router.get("/", response_model=list[StudyOut])
@@ -21,8 +27,8 @@ def create_study_session(body: StudyCreate):
     with get_conn() as conn:
         cur = conn.execute(
             """INSERT INTO study_sessions
-               (date, sport, name, description, planned_duration_minutes, actual_duration_minutes)
-               VALUES (?, ?, ?, ?, ?, ?)
+               (date, sport, name, description, planned_duration_minutes, actual_duration_minutes, study_exercises)
+               VALUES (?, ?, ?, ?, ?, ?, ?)
                RETURNING id""",
             (
                 body.date,
@@ -31,6 +37,7 @@ def create_study_session(body: StudyCreate):
                 body.description,
                 body.planned_duration_minutes,
                 body.actual_duration_minutes,
+                serialize_exercises(body.study_exercises),
             ),
         )
         new_id = cur.fetchone()["id"]
@@ -54,6 +61,13 @@ def update_study_session(session_id: int, body: StudyUpdate):
         if updates["sport"] is None:
             raise HTTPException(status_code=400, detail="sport cannot be null")
         updates["sport"] = updates["sport"].value
+
+    if "study_exercises" in updates:
+        # Unlike serialize_exercises above, model_dump() has already turned
+        # these into plain dicts (not StudyExercise objects) by this point —
+        # mirrors how routers/workouts.py's update endpoint handles
+        # gym_exercises/*_exercises.
+        updates["study_exercises"] = json.dumps(updates["study_exercises"]) if updates["study_exercises"] else None
 
     fields = ", ".join(f"{k} = ?" for k in updates)
     values = list(updates.values()) + [session_id]
