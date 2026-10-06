@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback, useRef } from 'react'
 import DayColumn from './DayColumn'
 import SummaryPanel from './SummaryPanel'
 import { addDays, toYMD, isSameDay, getMondayOf, MIN_DATE, MAX_DATE } from '../utils/dates'
-import { listToByDate } from '../utils/workouts'
+import { listToByDate, isInjuryRecoveryDay } from '../utils/workouts'
 import { useMode } from '../ModeContext'
 
 export default function MobileDayView({
@@ -116,6 +116,7 @@ export default function MobileDayView({
           date={selectedDate}
           today={today}
           workouts={workouts}
+          injuryRecovery={isInjuryRecoveryDay(workoutsByDate, selectedDate)}
           onDayClick={onDayClick}
           onCardClick={onCardClick}
           onReordered={handleReordered}
