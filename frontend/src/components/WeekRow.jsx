@@ -1,6 +1,7 @@
 import DayColumn from './DayColumn'
 import SummaryPanel from './SummaryPanel'
 import { addDays, toYMD } from '../utils/dates'
+import { isInjuryRecoveryDay } from '../utils/workouts'
 
 export default function WeekRow({ monday, today, workoutsByDate = {}, onDayClick, onCardClick, onReordered }) {
   const days = Array.from({ length: 7 }, (_, i) => addDays(monday, i))
@@ -15,6 +16,7 @@ export default function WeekRow({ monday, today, workoutsByDate = {}, onDayClick
             date={date}
             today={today}
             workouts={workoutsByDate[ymd] ?? []}
+            injuryRecovery={isInjuryRecoveryDay(workoutsByDate, date)}
             onDayClick={onDayClick}
             onCardClick={onCardClick}
             onReordered={onReordered}

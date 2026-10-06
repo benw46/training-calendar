@@ -1,4 +1,4 @@
-import { isSameDay } from './dates'
+import { isSameDay, addDays, toYMD } from './dates'
 
 export const SPORT_COLORS = {
   swim:     '#0ea5e9',
@@ -160,4 +160,19 @@ export function sortDayWorkouts(workouts) {
     if (pa !== pb) return pa - pb
     return a.id - b.id
   })
+}
+
+// The Two Week Injury Recovery period generates "Injury Recovery Week N"
+// notes, one on the first day of each week. Those notes are the only record
+// of the period, so a day is in recovery if one of them falls on it or on
+// any of the six days before it.
+export const INJURY_RECOVERY_LABEL = 'Injury Recovery'
+const INJURY_RECOVERY_NOTE = /^Injury Recovery Week \d+$/
+
+export function isInjuryRecoveryDay(workoutsByDate, date) {
+  for (let i = 0; i < 7; i++) {
+    const day = workoutsByDate[toYMD(addDays(date, -i))] ?? []
+    if (day.some(w => w.sport === 'note' && INJURY_RECOVERY_NOTE.test(w.name))) return true
+  }
+  return false
 }

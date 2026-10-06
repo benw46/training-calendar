@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { useMode } from '../ModeContext'
 import { addWeeks, toYMD } from '../utils/dates'
-import { fmtRepsTime, repsTimeUnit, distanceExerciseUnit, maskTime, resetExercisesDone } from '../utils/workouts'
+import { fmtRepsTime, repsTimeUnit, distanceExerciseUnit, maskTime, resetExercisesDone, INJURY_RECOVERY_LABEL } from '../utils/workouts'
 
 const SPORTS = ['swim', 'bike', 'run', 'strength', 'other', 'note', 'event', 'period']
 // 'strength' is the sport's stable internal/DB value; "Gym" is only how it's
@@ -522,22 +522,23 @@ export default function WorkoutModal({ workout, initialDate, initialSport, onClo
 
     // Period never persists as its own workout — it's a generator that
     // fans out into a run of plain 'note' workouts (one per build week,
-    // plus a trailing rest week — skipped for a taper, which is just the
-    // build weeks with no rest week after) and then closes, so it skips
+    // plus a trailing rest week — skipped for a taper or injury recovery,
+    // which are just their weeks with no rest week after) and then closes, so it skips
     // the normal validate/payload path entirely.
     if (isPeriod) {
       if (!form.date) { setErrors({ date: 'Required' }); return }
 
       const [planKind, weekCountStr] = form.period_plan.split('-')
       const isTaper = planKind === 'taper'
+      const isInjury = planKind === 'injury'
       const buildWeeks = parseInt(weekCountStr, 10)
-      const label = isTaper ? 'Taper' : 'Period'
+      const label = isTaper ? 'Taper' : isInjury ? INJURY_RECOVERY_LABEL : 'Period'
       const baseDate = new Date(form.date + 'T00:00:00')
       const notes = Array.from({ length: buildWeeks }, (_, i) => ({
         date: toYMD(addWeeks(baseDate, i)),
         name: `${label} Week ${i + 1}`,
       }))
-      if (!isTaper) {
+      if (!isTaper && !isInjury) {
         notes.push({ date: toYMD(addWeeks(baseDate, buildWeeks)), name: 'Rest Week' })
       }
 
@@ -1115,6 +1116,7 @@ export default function WorkoutModal({ workout, initialDate, initialSport, onClo
                 <option value="build-4">Four Week Build, One Week Rest</option>
                 <option value="taper-3">Three Week Taper</option>
                 <option value="taper-4">Four Week Taper</option>
+                <option value="injury-2">Two Week Injury Recovery</option>
               </select>
             </div>
           )}

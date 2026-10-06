@@ -14,7 +14,7 @@ const BRICK_TITLE_GAP = 3 // px of breathing room between a title's edge and whe
 // T1 (swim -> bike) and T2 (bike -> run) transitions.
 const BRICK_NEXT_SPORT = { swim: 'bike', bike: 'run' }
 
-export default function DayColumn({ date, today, workouts = [], onDayClick, onCardClick, onReordered, hideHeader = false }) {
+export default function DayColumn({ date, today, workouts = [], onDayClick, onCardClick, onReordered, hideHeader = false, injuryRecovery = false }) {
   const { resource } = useMode()
   const isToday = isSameDay(date, today)
   const { primary, secondary } = formatDayHeader(date, today)
@@ -217,7 +217,7 @@ export default function DayColumn({ date, today, workouts = [], onDayClick, onCa
   }
 
   return (
-    <div className="day-column">
+    <div className={`day-column${injuryRecovery ? ' day-column--injury' : ''}`}>
       {!hideHeader && (
         <div
           className={`day-header${isToday ? ' day-header--today' : ''}`}
