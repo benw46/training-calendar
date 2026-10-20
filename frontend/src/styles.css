@@ -793,6 +793,7 @@ body {
 
 .mobile-summary-panel .summary-copy-week-btn,
 .mobile-summary-panel .summary-delete-week-btn,
+.mobile-summary-panel .summary-unit-toggle__btn,
 .mobile-summary-panel .summary-week-action-msg {
   font-size: 12px;
 }
@@ -1176,6 +1177,45 @@ body {
 .summary-week-actions-toggle:hover {
   background: #f3f4f6;
   color: #6b7280;
+}
+
+/* Duration/distance switch — the top-right counterpart to
+   .summary-week-actions in the top-left, on the same 3px top nudge so the
+   two read as one row. Narrow enough that it clears Copy/Delete Week when
+   those are open in a 260px panel. */
+.summary-unit-toggle {
+  position: absolute;
+  top: 3px;
+  right: 8px;
+  display: flex;
+  border: 1px solid #d1d5db;
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.summary-unit-toggle__btn {
+  font-size: 10px;
+  font-weight: 600;
+  padding: 1px 6px;
+  border: none;
+  background: transparent;
+  color: #9ca3af;
+  cursor: pointer;
+  transition: background 0.12s, color 0.12s;
+}
+
+.summary-unit-toggle__btn + .summary-unit-toggle__btn {
+  border-left: 1px solid #d1d5db;
+}
+
+.summary-unit-toggle__btn:hover:not(.summary-unit-toggle__btn--active) {
+  background: #f9fafb;
+  color: #6b7280;
+}
+
+.summary-unit-toggle__btn--active {
+  background: #f3f4f6;
+  color: #374151;
 }
 
 .summary-copy-week-btn,

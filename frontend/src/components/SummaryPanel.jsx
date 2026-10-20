@@ -1,10 +1,11 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useSyncExternalStore } from 'react'
 import { useMode } from '../ModeContext'
 import { toYMD, addDays, getMondayOf } from '../utils/dates'
-import { SPORT_COLORS, fmtDuration, sortDayWorkouts, resetExercisesDone } from '../utils/workouts'
+import { SPORT_COLORS, fmtDuration, fmtDistance, sortDayWorkouts, resetExercisesDone } from '../utils/workouts'
 import {
   weekActualTotal, weekPlannedTotal,
   weekActualTotalsBySport, weekPlannedTotalsBySport,
+  weekActualDistancesBySport, weekPlannedDistancesBySport,
   computeDelta,
 } from '../utils/weeklyTotals'
 
@@ -31,6 +32,39 @@ const STUDY_ROWS = [
 // bulk-delete a week's worth of. Study sessions are "physical" in the same
 // sense: real logged time, safe to copy/bulk-delete.
 const PHYSICAL_SPORTS = new Set(['swim', 'bike', 'run', 'strength', 'other', 'study', 'review', 'create'])
+
+// Only these rows can switch to distance — Gym and Other have no distance of
+// their own, so they stay in duration whichever unit is picked. In distance
+// mode Total is the sum of just these three, so it measures the same thing
+// as the rows beneath it.
+const DISTANCE_KEYS = ['swim', 'bike', 'run']
+
+// The duration/distance choice is shared by every week's panel (flipping one
+// flips them all, so weeks stay comparable down the page), hence a tiny
+// module-level store rather than per-panel state. Not persisted across a
+// reload, same as the rest of App's UI state.
+let totalsUnit = 'duration' // 'duration' | 'distance'
+const totalsUnitListeners = new Set()
+function setTotalsUnit(unit) {
+  totalsUnit = unit
+  for (const l of totalsUnitListeners) l()
+}
+function subscribeTotalsUnit(listener) {
+  totalsUnitListeners.add(listener)
+  return () => totalsUnitListeners.delete(listener)
+}
+function getTotalsUnit() { return totalsUnit }
+
+// Swaps the distance-capable rows (and Total) of a duration-keyed totals
+// object for their distance figures.
+function withDistances(durations, distances) {
+  const out = { ...durations, total: 0 }
+  for (const k of DISTANCE_KEYS) {
+    out[k] = distances[k]
+    out.total += distances[k]
+  }
+  return out
+}
 
 function deltaText(delta) {
   if (delta.kind === 'new')  return 'New'
@@ -74,6 +108,10 @@ export default function SummaryPanel({ workoutsByDate, days, today, onReordered 
   const isStudy = mode === 'study'
   const ROWS = isStudy ? STUDY_ROWS : TRAINING_ROWS
   const SPORT_ROWS = ROWS.filter(r => r.key !== 'total')
+  const unit = useSyncExternalStore(subscribeTotalsUnit, getTotalsUnit)
+  // Study sessions never carry a distance, so the toggle is training-only.
+  const showDistance = !isStudy && unit === 'distance'
+  const isDistanceRow = key => showDistance && (key === 'total' || DISTANCE_KEYS.includes(key))
   const [copyState, setCopyState] = useState('idle') // 'idle' | 'copying' | 'done' | 'error'
   const [copyMsg, setCopyMsg]     = useState(null)
   const [deleteState, setDeleteState] = useState('idle') // 'idle' | 'deleting' | 'error'
@@ -181,8 +219,10 @@ export default function SummaryPanel({ workoutsByDate, days, today, onReordered 
     }
   }
 
-  const actualByKey  = { total: 0, swim: 0, bike: 0, run: 0, gym: 0, other: 0, study: 0, review: 0, create: 0 }
-  const plannedByKey = { total: 0, swim: 0, bike: 0, run: 0, gym: 0, other: 0, study: 0, review: 0, create: 0 }
+  let actualByKey  = { total: 0, swim: 0, bike: 0, run: 0, gym: 0, other: 0, study: 0, review: 0, create: 0 }
+  let plannedByKey = { total: 0, swim: 0, bike: 0, run: 0, gym: 0, other: 0, study: 0, review: 0, create: 0 }
+  const actualKmByKey  = { swim: 0, bike: 0, run: 0 }
+  const plannedKmByKey = { swim: 0, bike: 0, run: 0 }
   for (const w of workouts) {
     const actual  = w.actual_duration_minutes ?? 0
     const planned = w.planned_duration_minutes ?? 0
@@ -195,6 +235,14 @@ export default function SummaryPanel({ workoutsByDate, days, today, onReordered 
       : w.sport === 'strength' ? 'gym' : 'other'
     actualByKey[bucket]  += actual
     plannedByKey[bucket] += planned
+    if (bucket in actualKmByKey) {
+      actualKmByKey[bucket]  += w.actual_distance_km ?? 0
+      plannedKmByKey[bucket] += w.planned_distance_km ?? 0
+    }
+  }
+  if (showDistance) {
+    actualByKey  = withDistances(actualByKey, actualKmByKey)
+    plannedByKey = withDistances(plannedByKey, plannedKmByKey)
   }
 
   // The delta bar's formula depends on where this week sits relative to
@@ -208,25 +256,33 @@ export default function SummaryPanel({ workoutsByDate, days, today, onReordered 
   const isPast    = weekYMD < todayWeekYMD
   const isCurrent = weekYMD === todayWeekYMD
 
-  let deltaLabel, deltaExplanation, currentSide, previousSide, previousBySport
+  const measure = showDistance ? 'distance' : 'duration'
+  let deltaLabel, deltaExplanation, currentSide, previousSide, previousBySport, previousKmBySport
   if (isPast) {
-    deltaLabel       = 'Actual Delta:'
-    deltaExplanation = "This week's actual duration vs. last week's actual duration achieved."
-    currentSide      = actualByKey
-    previousSide     = weekActualTotal(workoutsByDate, prevMonday)
-    previousBySport  = weekActualTotalsBySport(workoutsByDate, prevMonday)
+    deltaLabel        = 'Actual Delta:'
+    deltaExplanation  = `This week's actual ${measure} vs. last week's actual ${measure} achieved.`
+    currentSide       = actualByKey
+    previousSide      = weekActualTotal(workoutsByDate, prevMonday)
+    previousBySport   = weekActualTotalsBySport(workoutsByDate, prevMonday)
+    previousKmBySport = weekActualDistancesBySport(workoutsByDate, prevMonday)
   } else if (isCurrent) {
-    deltaLabel       = 'Delta to last week:'
-    deltaExplanation = "This week's planned duration vs. last week's actual duration achieved."
-    currentSide      = plannedByKey
-    previousSide     = weekActualTotal(workoutsByDate, prevMonday)
-    previousBySport  = weekActualTotalsBySport(workoutsByDate, prevMonday)
+    deltaLabel        = 'Delta to last week:'
+    deltaExplanation  = `This week's planned ${measure} vs. last week's actual ${measure} achieved.`
+    currentSide       = plannedByKey
+    previousSide      = weekActualTotal(workoutsByDate, prevMonday)
+    previousBySport   = weekActualTotalsBySport(workoutsByDate, prevMonday)
+    previousKmBySport = weekActualDistancesBySport(workoutsByDate, prevMonday)
   } else {
-    deltaLabel       = 'Delta to last week:'
-    deltaExplanation = "This week's planned duration vs. last week's planned duration."
-    currentSide      = plannedByKey
-    previousSide     = weekPlannedTotal(workoutsByDate, prevMonday)
-    previousBySport  = weekPlannedTotalsBySport(workoutsByDate, prevMonday)
+    deltaLabel        = 'Delta to last week:'
+    deltaExplanation  = `This week's planned ${measure} vs. last week's planned ${measure}.`
+    currentSide       = plannedByKey
+    previousSide      = weekPlannedTotal(workoutsByDate, prevMonday)
+    previousBySport   = weekPlannedTotalsBySport(workoutsByDate, prevMonday)
+    previousKmBySport = weekPlannedDistancesBySport(workoutsByDate, prevMonday)
+  }
+  if (showDistance) {
+    previousBySport = withDistances(previousBySport, previousKmBySport)
+    previousSide    = previousBySport.total
   }
 
   const totalDelta = computeDelta(currentSide.total, previousSide)
@@ -235,8 +291,32 @@ export default function SummaryPanel({ workoutsByDate, days, today, onReordered 
     delta: computeDelta(currentSide[key], previousBySport[key]),
   }))
 
+  const fmtTotal = (key, value) => isDistanceRow(key) ? fmtDistance(value) : `${fmtDuration(value)}h`
+
   return (
     <div className="summary-panel">
+      {!isStudy && (
+        <div className="summary-unit-toggle" role="group" aria-label="Show totals as">
+          <button
+            type="button"
+            className={`summary-unit-toggle__btn${unit === 'duration' ? ' summary-unit-toggle__btn--active' : ''}`}
+            onClick={() => setTotalsUnit('duration')}
+            aria-pressed={unit === 'duration'}
+            title="Show weekly totals as duration"
+          >
+            Time
+          </button>
+          <button
+            type="button"
+            className={`summary-unit-toggle__btn${unit === 'distance' ? ' summary-unit-toggle__btn--active' : ''}`}
+            onClick={() => setTotalsUnit('distance')}
+            aria-pressed={unit === 'distance'}
+            title="Show weekly swim/bike/run totals as distance (Gym and Other stay as duration)"
+          >
+            Dist
+          </button>
+        </div>
+      )}
       {ROWS.map(({ key, label, color }) => {
         const planned = plannedByKey[key]
         const pct = planned > 0 ? Math.min(actualByKey[key] / planned, 1) : 0
@@ -305,8 +385,8 @@ export default function SummaryPanel({ workoutsByDate, days, today, onReordered 
             <div className={`summary-row${key === 'total' ? ' summary-row--total' : ''}`}>
               <span className="summary-row__dot" style={{ background: color }} />
               <span className="summary-row__label">{label}</span>
-              <span className="summary-row__planned-value">{fmtDuration(plannedByKey[key])}h</span>
-              <span className="summary-row__value">{fmtDuration(actualByKey[key])}h</span>
+              <span className="summary-row__planned-value">{fmtTotal(key, plannedByKey[key])}</span>
+              <span className="summary-row__value">{fmtTotal(key, actualByKey[key])}</span>
             </div>
             {key === 'total'
               ? <div className="summary-row--total__divider" />
