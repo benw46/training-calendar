@@ -47,6 +47,14 @@ export function weekPlannedTotalsBySport(workoutsByDate, monday) {
   return weekTotalsBySport(workoutsByDate, monday, 'planned_duration_minutes')
 }
 
+export function weekActualDistancesBySport(workoutsByDate, monday) {
+  return weekTotalsBySport(workoutsByDate, monday, 'actual_distance_km')
+}
+
+export function weekPlannedDistancesBySport(workoutsByDate, monday) {
+  return weekTotalsBySport(workoutsByDate, monday, 'planned_distance_km')
+}
+
 export function computeDelta(current, previous) {
   if (previous === 0) return { kind: 'new' }
   const pct = Math.round(((current - previous) / previous) * 100)
