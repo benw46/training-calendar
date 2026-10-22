@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react'
 import { api, resourceFor } from '../api/workouts'
 import { listToByDate, SPORT_COLORS, maskTime } from '../utils/workouts'
-import { weekActualTotal, weekActualTotalsBySport } from '../utils/weeklyTotals'
+import { weekActualTotalsBySport, sumKeys, TRAINING_TOTAL_KEYS, STUDY_TOTAL_KEYS } from '../utils/weeklyTotals'
 import { getMondayOf, addWeeks, addDays, toYMD } from '../utils/dates'
 
 const WEEKS_3MO  = 13 // ~3 months of weekly buckets, including the current week
@@ -95,10 +95,12 @@ const STUDY_SPORT_STACK = [
   { key: 'create', label: 'Create', color: SPORT_COLORS.create },
 ]
 
-function buildWeeklyPoints(byDate, startMonday, weekCount) {
+// Sums only totalKeys, so the year graph matches the weekly totals panel's
+// Total (Other is left out in training mode).
+function buildWeeklyPoints(byDate, startMonday, weekCount, totalKeys) {
   return Array.from({ length: weekCount }, (_, i) => {
     const monday = addWeeks(startMonday, i)
-    const minutes = weekActualTotal(byDate, monday)
+    const minutes = sumKeys(weekActualTotalsBySport(byDate, monday), totalKeys)
     return {
       label: monday.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
       hours: Math.round((minutes / 60) * 10) / 10,
@@ -793,7 +795,8 @@ export default function GraphsModal({ mode = 'training', onClose }) {
     const startMondayYear = addWeeks(currentMonday, -(WEEKS_YEAR - 1))
     resource.list(toYMD(startMondayYear), toYMD(addDays(currentMonday, 6)))
       .then(listToByDate)
-      .then(byDate => setWeeklyYear(buildWeeklyPoints(byDate, startMondayYear, WEEKS_YEAR)))
+      .then(byDate => setWeeklyYear(buildWeeklyPoints(byDate, startMondayYear, WEEKS_YEAR,
+        isStudy ? STUDY_TOTAL_KEYS : TRAINING_TOTAL_KEYS)))
       .catch(err => setErrorYear(err.message))
 
     if (!isStudy) {
