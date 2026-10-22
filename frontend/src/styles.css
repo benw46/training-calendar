@@ -1025,6 +1025,37 @@ body {
   border-bottom: 1px solid #eaecf0;
 }
 
+/* Gym and Other aren't counted in Total — a labelled dashed rule sets them
+   apart and their cells are faded so they read as secondary. Full-width
+   grid item for the same reason as .summary-row--total__divider above. */
+.summary-excluded-divider {
+  grid-column: 1 / -1;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 4px;
+}
+
+.summary-excluded-divider::before,
+.summary-excluded-divider::after {
+  content: '';
+  flex: 1;
+  border-top: 1px dashed #d1d5db;
+}
+
+.summary-excluded-divider__label {
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: #9ca3af;
+}
+
+.summary-row--excluded > *,
+.summary-row__progress--excluded {
+  opacity: 0.55;
+}
+
 .summary-row--total .summary-row__label {
   font-weight: 700;
   color: #111827;

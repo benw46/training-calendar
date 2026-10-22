@@ -3,10 +3,9 @@ import { useMode } from '../ModeContext'
 import { toYMD, addDays, getMondayOf } from '../utils/dates'
 import { SPORT_COLORS, fmtDuration, fmtDistance, sortDayWorkouts, resetExercisesDone } from '../utils/workouts'
 import {
-  weekActualTotal, weekPlannedTotal,
   weekActualTotalsBySport, weekPlannedTotalsBySport,
   weekActualDistancesBySport, weekPlannedDistancesBySport,
-  computeDelta,
+  computeDelta, sumKeys, TRAINING_TOTAL_KEYS, STUDY_TOTAL_KEYS,
 } from '../utils/weeklyTotals'
 
 const TRAINING_ROWS = [
@@ -108,6 +107,9 @@ export default function SummaryPanel({ workoutsByDate, days, today, onReordered 
   const isStudy = mode === 'study'
   const ROWS = isStudy ? STUDY_ROWS : TRAINING_ROWS
   const SPORT_ROWS = ROWS.filter(r => r.key !== 'total')
+  const TOTAL_KEYS = isStudy ? STUDY_TOTAL_KEYS : TRAINING_TOTAL_KEYS
+  const isExcludedRow = key => key !== 'total' && !TOTAL_KEYS.includes(key)
+  const firstExcludedKey = SPORT_ROWS.find(r => isExcludedRow(r.key))?.key
   const unit = useSyncExternalStore(subscribeTotalsUnit, getTotalsUnit)
   // Study sessions never carry a distance, so the toggle is training-only.
   const showDistance = !isStudy && unit === 'distance'
@@ -226,8 +228,6 @@ export default function SummaryPanel({ workoutsByDate, days, today, onReordered 
   for (const w of workouts) {
     const actual  = w.actual_duration_minutes ?? 0
     const planned = w.planned_duration_minutes ?? 0
-    actualByKey.total  += actual
-    plannedByKey.total += planned
 
     const bucket = w.sport === 'swim' || w.sport === 'bike' || w.sport === 'run'
       || w.sport === 'study' || w.sport === 'review' || w.sport === 'create'
@@ -240,6 +240,8 @@ export default function SummaryPanel({ workoutsByDate, days, today, onReordered 
       plannedKmByKey[bucket] += w.planned_distance_km ?? 0
     }
   }
+  actualByKey.total  = sumKeys(actualByKey, TOTAL_KEYS)
+  plannedByKey.total = sumKeys(plannedByKey, TOTAL_KEYS)
   if (showDistance) {
     actualByKey  = withDistances(actualByKey, actualKmByKey)
     plannedByKey = withDistances(plannedByKey, plannedKmByKey)
@@ -257,33 +259,30 @@ export default function SummaryPanel({ workoutsByDate, days, today, onReordered 
   const isCurrent = weekYMD === todayWeekYMD
 
   const measure = showDistance ? 'distance' : 'duration'
-  let deltaLabel, deltaExplanation, currentSide, previousSide, previousBySport, previousKmBySport
+  let deltaLabel, deltaExplanation, currentSide, previousBySport, previousKmBySport
   if (isPast) {
     deltaLabel        = 'Actual Delta:'
     deltaExplanation  = `This week's actual ${measure} vs. last week's actual ${measure} achieved.`
     currentSide       = actualByKey
-    previousSide      = weekActualTotal(workoutsByDate, prevMonday)
     previousBySport   = weekActualTotalsBySport(workoutsByDate, prevMonday)
     previousKmBySport = weekActualDistancesBySport(workoutsByDate, prevMonday)
   } else if (isCurrent) {
     deltaLabel        = 'Delta to last week:'
     deltaExplanation  = `This week's planned ${measure} vs. last week's actual ${measure} achieved.`
     currentSide       = plannedByKey
-    previousSide      = weekActualTotal(workoutsByDate, prevMonday)
     previousBySport   = weekActualTotalsBySport(workoutsByDate, prevMonday)
     previousKmBySport = weekActualDistancesBySport(workoutsByDate, prevMonday)
   } else {
     deltaLabel        = 'Delta to last week:'
     deltaExplanation  = `This week's planned ${measure} vs. last week's planned ${measure}.`
     currentSide       = plannedByKey
-    previousSide      = weekPlannedTotal(workoutsByDate, prevMonday)
     previousBySport   = weekPlannedTotalsBySport(workoutsByDate, prevMonday)
     previousKmBySport = weekPlannedDistancesBySport(workoutsByDate, prevMonday)
   }
   if (showDistance) {
     previousBySport = withDistances(previousBySport, previousKmBySport)
-    previousSide    = previousBySport.total
   }
+  const previousSide = showDistance ? previousBySport.total : sumKeys(previousBySport, TOTAL_KEYS)
 
   const totalDelta = computeDelta(currentSide.total, previousSide)
   const sportDeltas = SPORT_ROWS.map(({ key, label, color }) => ({
@@ -382,7 +381,12 @@ export default function SummaryPanel({ workoutsByDate, days, today, onReordered 
                 )}
               </div>
             )}
-            <div className={`summary-row${key === 'total' ? ' summary-row--total' : ''}`}>
+            {key === firstExcludedKey && (
+              <div className="summary-excluded-divider" title="These rows are not counted in Total">
+                <span className="summary-excluded-divider__label">Not in Total</span>
+              </div>
+            )}
+            <div className={`summary-row${key === 'total' ? ' summary-row--total' : ''}${isExcludedRow(key) ? ' summary-row--excluded' : ''}`}>
               <span className="summary-row__dot" style={{ background: color }} />
               <span className="summary-row__label">{label}</span>
               <span className="summary-row__planned-value">{fmtTotal(key, plannedByKey[key])}</span>
@@ -391,7 +395,7 @@ export default function SummaryPanel({ workoutsByDate, days, today, onReordered 
             {key === 'total'
               ? <div className="summary-row--total__divider" />
               : (
-                <div className="summary-row__progress">
+                <div className={`summary-row__progress${isExcludedRow(key) ? ' summary-row__progress--excluded' : ''}`}>
                   <div
                     className="summary-row__progress-fill"
                     style={{ width: `${pct * 100}%`, background: color }}
